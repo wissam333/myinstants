@@ -47,10 +47,10 @@
 
 1. Clona el repositorio en tu servidor:
 
-   ```bash
-   git clone https://github.com/abdipr/myinstants-api.git
-   cd myinstants-api
-   ```
+    ```bash
+    git clone https://github.com/wissam333/myinstants.git
+    cd myinstants
+    ```
 
 2. Descarga e incluye `simple_html_dom.php` en el directorio del proyecto.
 
@@ -65,7 +65,7 @@
 
 4. **Desplegar en Vercel**:
    Desplegar es sencillo. Haz clic en el botón de abajo para desplegar este repositorio directamente en tu cuenta de Vercel.<br>
-   [![Desplegar con Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fabdipr%2Fmyinstants-api%2F&redirect-url=https%3A%2F%2Fgithub.com%2Fabdipr%2Fmyinstants-api%2F)
+    [![Desplegar con Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F&redirect-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F)
 
 ## ❇️ Referencia
 
@@ -106,7 +106,7 @@ Una respuesta exitosa típica (HTTP 200) devolverá un objeto JSON como este:
 ```json
 {
   "status": 200,
-  "author": "abdipr",
+  "author": "wissam333",
   "page": 4,
   "count": 30,
   "total_pages": 50,
@@ -136,7 +136,7 @@ Todos los errores devuelven objetos JSON con un código de estado HTTP apropiado
   ```json
   {
     "status": 404,
-    "author": "abdipr",
+    "author": "wissam333",
     "message": "Endpoint not found"
   }
   ```
@@ -217,15 +217,11 @@ GET https://myinstants-api.vercel.app/search?q=laugh&with_duration=1
 
 ## ✨ Soporte
 
-Si te gusta este proyecto, por favor dale una estrella en este repositorio, gracias ⭐<br>
-Puedes apoyarme mediante:<br>
-<a href="https://trakteer.id/abdipr" target="_blank"><img id="wse-buttons-preview" src="https://cdn.trakteer.id/images/embed/trbtn-red-1.png?date=18-11-2023" height="40" style="border: 0px; height: 40px;" alt="Trakteer Saya"></a>
-<a href="https://saweria.co/abdipr" target="_blank"><img height="42" src="https://files.catbox.moe/fwpsve.png"></a>
-<a href="https://www.buymeacoffee.com/abdipr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: auto !important;" ></a>
+Si te gusta este proyecto, por favor dale una estrella en este repositorio, gracias ⭐
 
 ## ⚖️ Licencia
 
-Este proyecto está licenciado bajo la `MIT License`. Consulta el archivo [LICENSE](https://github.com/abdipr/myinstants-api/blob/main/LICENSE) para más información.
+Este proyecto está licenciado bajo la `MIT License`. Consulta el archivo [LICENSE](https://github.com/wissam333/myinstants/blob/main/LICENSE) para más información.
 
 ## ⚠️ Descargo de Responsabilidad
 
