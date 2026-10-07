@@ -31,6 +31,7 @@
 - [Examples](#-examples)
 - [Contributing](#-contributing)
 - [Support](#-support)
+- [Credits](#-credits)
 - [License & Disclaimer](#%EF%B8%8F-license)
 
 ## 🚀 Getting Started
@@ -226,6 +227,11 @@ If you like this project, please star on this repository, thank you ⭐
    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&legend=top-left" />
  </picture>
 </a>
+
+## 🙏 Credits
+
+- Original project by [abdipr](https://github.com/abdipr/myinstants-api).
+- Updated and maintained by [wissam333](https://github.com/wissam333/myinstants).
 
 ## ⚖️ License
 
