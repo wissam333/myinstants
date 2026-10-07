@@ -33,6 +33,7 @@
 - [Ejemplos](#-examples)
 - [Contribuir](#-contributing)
 - [Soporte](#-support)
+- [Créditos](#-créditos)
 - [Licencia y Descargo de Responsabilidad](#%EF%B8%8F-license)
 
 ## 🚀 Primeros Pasos
@@ -218,6 +219,11 @@ GET https://myinstants-api.vercel.app/search?q=laugh&with_duration=1
 ## ✨ Soporte
 
 Si te gusta este proyecto, por favor dale una estrella en este repositorio, gracias ⭐
+
+## 🙏 Créditos
+
+- Proyecto original por [abdipr](https://github.com/abdipr/myinstants-api).
+- Actualizado y mantenido por [wissam333](https://github.com/wissam333/myinstants).
 
 ## ⚖️ Licencia
 
