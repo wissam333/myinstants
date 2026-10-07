@@ -45,10 +45,10 @@
 
 1. Clone the repository to your server:
 
-   ```bash
-   git clone https://github.com/abdipr/myinstants-api.git
-   cd myinstants-api
-   ```
+    ```bash
+    git clone https://github.com/wissam333/myinstants.git
+    cd myinstants
+    ```
 
 2. Download and include `simple_html_dom.php` in the project directory.
 
@@ -63,7 +63,7 @@
 
 4. **Deploy to Vercel**:
    Deploying is simple. Click the button below to deploy this repository directly to your Vercel account.<br>
-   [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fabdipr%2Fmyinstants-api%2F&redirect-url=https%3A%2F%2Fgithub.com%2Fabdipr%2Fmyinstants-api%2F)
+    [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F&redirect-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F)
 
 ## ❇️ Reference
 
@@ -104,7 +104,7 @@ A typical successful response (HTTP 200) will return a JSON object like this:
 ```json
 {
   "status": 200,
-  "author": "abdipr",
+  "author": "wissam333",
   "page": 4,
   "count": 30,
   "total_pages": 50,
@@ -134,7 +134,7 @@ All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 
   ```json
   {
     "status": 404,
-    "author": "abdipr",
+    "author": "wissam333",
     "message": "Endpoint not found"
   }
   ```
@@ -215,25 +215,21 @@ Contributions are welcome! To contribute:
 
 ## ✨ Support
 
-If you like this project, please star on this repository, thank you ⭐<br>
-You can support me by:<br>
-<a href="https://trakteer.id/abdipr" target="_blank"><img id="wse-buttons-preview" src="https://cdn.trakteer.id/images/embed/trbtn-red-1.png?date=18-11-2023" height="40" style="border: 0px; height: 40px;" alt="Trakteer Saya"></a>
-<a href="https://saweria.co/abdipr" target="_blank"><img height="42" src="https://files.catbox.moe/fwpsve.png"></a>
-<a href="https://www.buymeacoffee.com/abdipr" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: auto !important;" ></a>
+If you like this project, please star on this repository, thank you ⭐
 
 ### Star History
 
-<a href="https://www.star-history.com/?repos=abdipr%2Fmyinstants-api&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=wissam333%2Fmyinstants&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=abdipr/myinstants-api&type=date&theme=dark&legend=top-left&sealed_token=d8-oCRjEm0gdKE6IHODgty_02DfU0SBhQ6-JKph5qyufokc7Yl6jjX-xxl8ppYXzquxu-yC7c-dDkalFs2CDpDfStsFDUb6p_cw_vtxA-iUwKFWg1adHgQ" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=abdipr/myinstants-api&type=date&legend=top-left&sealed_token=d8-oCRjEm0gdKE6IHODgty_02DfU0SBhQ6-JKph5qyufokc7Yl6jjX-xxl8ppYXzquxu-yC7c-dDkalFs2CDpDfStsFDUb6p_cw_vtxA-iUwKFWg1adHgQ" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=abdipr/myinstants-api&type=date&legend=top-left&sealed_token=d8-oCRjEm0gdKE6IHODgty_02DfU0SBhQ6-JKph5qyufokc7Yl6jjX-xxl8ppYXzquxu-yC7c-dDkalFs2CDpDfStsFDUb6p_cw_vtxA-iUwKFWg1adHgQ" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&legend=top-left" />
  </picture>
 </a>
 
 ## ⚖️ License
 
-This project is licensed under the `MIT License`. See the [LICENSE](https://github.com/abdipr/myinstants-api/blob/main/LICENSE) file for more information.
+This project is licensed under the `MIT License`. See the [LICENSE](https://github.com/wissam333/myinstants/blob/main/LICENSE) file for more information.
 
 ## ⚠️ Disclaimer
 
