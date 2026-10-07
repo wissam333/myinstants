@@ -104,6 +104,41 @@ function pagination_meta($page, $total_pages, $count) {
     return $meta;
 }
 
+// --- Category helpers (fixed list, mirrored from myinstants.com nav) ---
+
+function valid_categories() {
+    return [
+        "anime & manga",
+        "games",
+        "memes",
+        "movies",
+        "music",
+        "politics",
+        "pranks",
+        "reactions",
+        "sound effects",
+        "sports",
+        "television",
+        "tiktok trends",
+        "viral",
+        "whatsapp audios"
+    ];
+}
+
+function resolve_category($input) {
+    $name = strtolower(trim(rawurldecode((string)$input)));
+    $name = preg_replace('/\s+/', ' ', $name);
+    foreach (valid_categories() as $canonical) {
+        if ($name === $canonical) return $canonical;
+    }
+    return null;
+}
+
+function category_slug($canonical) {
+    // Match site convention: spaces as %20, "&" left raw (e.g. anime%20&%20manga).
+    return str_replace('%26', '&', rawurlencode($canonical));
+}
+
 // --- Duration helpers (myinstants.com exposes no durations, so probe MP3s) ---
 
 function get_duration_params() {

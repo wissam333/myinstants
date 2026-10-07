@@ -83,8 +83,9 @@ URL Base: https://myinstants-api.vercel.app
 | `GET /best`      | Mejores sonidos de todos los tiempos | `q`, `page` |
 | `GET /uploaded`  | Sonidos subidos por el usuario | `username`, `page` |
 | `GET /favorites` | Sonidos favoritos del usuario | `username`, `page` |
+| `GET /category`  | Sonidos por categoría | `category`, `q`, `page` |
 
-_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`) admiten paginación con `?page=N` (refleja `https://www.myinstants.com/en/index/sy/?page=4`, por defecto `1`) y filtrado por duración con `?with_duration=1&min_duration=2&max_duration=6`._
+_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`) admiten paginación con `?page=N` (refleja `https://www.myinstants.com/en/index/sy/?page=4`, por defecto `1`) y filtrado por duración con `?with_duration=1&min_duration=2&max_duration=6`._
 
 ### Parámetros de Solicitud
 
@@ -94,6 +95,7 @@ _Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/upl
 |   `username`   | Nombre de usuario                                        |
 |      `id`      | ID Único del sonido                                      |
 |     `page`     | Número de página (>= 1, por defecto `1`). Ejemplo: `?page=4` |
+|   `category`   | Nombre de categoría (obligatorio para `/category`, insensible a mayúsculas). Una de: `anime & manga`, `games`, `memes`, `movies`, `music`, `politics`, `pranks`, `reactions`, `sound effects`, `sports`, `television`, `tiktok trends`, `viral`, `whatsapp audios` |
 | `with_duration`| `1` para incluir la `duration` (segundos) del MP3        |
 | `min_duration` | Solo sonidos de >= N segundos (implica `with_duration`)  |
 | `max_duration` | Solo sonidos de <= N segundos (implica `with_duration`)  |
@@ -124,7 +126,7 @@ Una respuesta exitosa típica (HTTP 200) devolverá un objeto JSON como este:
 }
 ```
 
-_`page` / `count` / `total_pages` / `has_next` los devuelven todos los endpoints de lista (`total_pages` se extrae del título original `Page X of Y`, `null` si no se detecta). `duration` (segundos) solo aparece con `with_duration=1` o `min_duration` / `max_duration`._
+_`page` / `count` / `total_pages` / `has_next` los devuelven todos los endpoints de lista (`total_pages` se extrae del título original `Page X of Y`, `null` si no se detecta). `duration` (segundos) solo aparece con `with_duration=1` o `min_duration` / `max_duration`. `/category` además devuelve `category` y `region` (`null` en el listado global)._
 
 _Nota: Para el endpoint `/detail`, el objeto `data` contendrá campos adicionales como `description`, `tags`, `favorites`, `views` y `uploader` (más `duration` con `?with_duration=1`)._
 
@@ -204,6 +206,16 @@ GET https://myinstants-api.vercel.app/recent?page=2
 GET https://myinstants-api.vercel.app/search?q=laugh&min_duration=2&max_duration=6
 GET https://myinstants-api.vercel.app/trending?q=sy&page=4&min_duration=2&max_duration=6
 GET https://myinstants-api.vercel.app/search?q=laugh&with_duration=1
+```
+
+### Ejemplo 10: Sonidos por categoría (con región opcional y paginación)
+
+Refleja https://www.myinstants.com/en/categories/anime%20&%20manga/sy/?page=9 — `q` (región) es opcional; sin él obtienes el listado global:
+
+```http
+GET https://myinstants-api.vercel.app/category?category=music
+GET https://myinstants-api.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
+GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_duration=2&max_duration=6
 ```
 
 ## 🌱 Contribuir
