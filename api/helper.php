@@ -590,3 +590,47 @@ function parse_msb_api($data, $query, $page = 1, $page_size = 35) {
     }
     return [$sounds, $total_pages, $has_next];
 }
+
+function freesound_key() {
+    $k = getenv('FREESOUND_API_KEY');
+    return ($k !== false && trim((string)$k) !== '') ? trim((string)$k) : null;
+}
+
+function parse_freesound_api($data, $page_size = 30) {
+    $sounds = [];
+    $total_pages = null;
+    $has_next = null;
+    if (!is_array($data)) return [$sounds, $total_pages, $has_next];
+    $list = $data['results'] ?? null;
+    if (!is_array($list)) $list = [];
+    $count = $data['count'] ?? null;
+    if (is_numeric($count) && (int)$count > 0 && $page_size > 0) {
+        $total_pages = (int)ceil((int)$count / $page_size);
+    }
+    if (array_key_exists('next', $data)) {
+        $has_next = ($data['next'] !== null && $data['next'] !== '');
+    }
+    foreach ($list as $item) {
+        if (!is_array($item)) continue;
+        $id = $item['id'] ?? null;
+        $name = $item['name'] ?? null;
+        $previews = (isset($item['previews']) && is_array($item['previews'])) ? $item['previews'] : [];
+        $mp3 = $previews['preview-hq-mp3'] ?? $previews['preview-lq-mp3'] ?? null;
+        if ($id === null || !$name || !$mp3) continue;
+        $username = $item['username'] ?? null;
+        $url = $username ? "https://freesound.org/people/" . $username . "/sounds/" . $id . "/" : null;
+        $dur = $item['duration'] ?? null;
+        $images = (isset($item['images']) && is_array($item['images'])) ? $item['images'] : [];
+        $sounds[] = [
+            "id" => "freesound-" . $id,
+            "title" => $name,
+            "url" => $url,
+            "mp3" => $mp3,
+            "thumbnail" => $images['spectral_m'] ?? $images['waveform_m'] ?? null,
+            "duration" => (is_numeric($dur) ? (float)$dur : null),
+            "license" => $item['license'] ?? null,
+            "source" => "freesound"
+        ];
+    }
+    return [$sounds, $total_pages, $has_next];
+}
