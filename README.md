@@ -82,8 +82,13 @@ Base URL: https://myinstants-api.vercel.app
 | `GET /uploaded`  | User's uploaded sounds   | `username`, `page` |
 | `GET /favorites` | User's favorite sounds   | `username`, `page` |
 | `GET /category`  | Sounds by category       | `category`, `q`, `page` |
+| `GET /memesoundboard` | Sounds from MemeSoundboard.io | `q`, `page` |
+| `GET /101soundboards` | Sounds from 101Soundboards.com | `q`, `page` |
+| `GET /search_all` | Merged search across all 3 sources | `q`, `page` |
 
-_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`) support pagination via `?page=N` (mirrors `https://www.myinstants.com/en/index/sy/?page=4`, default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
+_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
+
+_Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` interleaves the three sources (round-robin) and reports per-source status in `sources`. 101Soundboards items include `thumbnail` and a free `duration` (no probing needed)._
 
 ### Request Parameters
 
@@ -246,6 +251,14 @@ Mirrors https://www.myinstants.com/en/categories/anime%20&%20manga/sy/?page=9 â€
 GET https://myinstants-api.vercel.app/category?category=music
 GET https://myinstants-api.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
 GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_duration=2&max_duration=6
+```
+
+### Example 11: Search Other Sound Sites (Merged or Per-Source)
+
+```http
+GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
+GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
+GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
 ```
 
 ## ðŸŒ± Contributing

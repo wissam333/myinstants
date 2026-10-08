@@ -84,8 +84,13 @@ URL Base: https://myinstants-api.vercel.app
 | `GET /uploaded`  | Sonidos subidos por el usuario | `username`, `page` |
 | `GET /favorites` | Sonidos favoritos del usuario | `username`, `page` |
 | `GET /category`  | Sonidos por categor铆a | `category`, `q`, `page` |
+| `GET /memesoundboard` | Sonidos de MemeSoundboard.io | `q`, `page` |
+| `GET /101soundboards` | Sonidos de 101Soundboards.com | `q`, `page` |
+| `GET /search_all` | B煤squeda combinada en las 3 fuentes | `q`, `page` |
 
-_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`) admiten paginaci贸n con `?page=N` (refleja `https://www.myinstants.com/en/index/sy/?page=4`, por defecto `1`) y filtrado por duraci贸n con `?with_duration=1&min_duration=2&max_duration=6`._
+_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/search_all`) admiten paginaci贸n con `?page=N` (por defecto `1`) y filtrado por duraci贸n con `?with_duration=1&min_duration=2&max_duration=6`._
+
+_Cada elemento lleva un campo `source` (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` intercala las tres fuentes (round-robin) e informa el estado por fuente en `sources`. Los elementos de 101Soundboards incluyen `thumbnail` y `duration` gratuita (sin an谩lisis necesario)._
 
 ### Par谩metros de Solicitud
 
@@ -248,6 +253,14 @@ Refleja https://www.myinstants.com/en/categories/anime%20&%20manga/sy/?page=9 鈥
 GET https://myinstants-api.vercel.app/category?category=music
 GET https://myinstants-api.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
 GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_duration=2&max_duration=6
+```
+
+### Ejemplo 11: Buscar en otros sitios de sonidos (combinado o por fuente)
+
+```http
+GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
+GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
+GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
 ```
 
 ## 馃尡 Contribuir
