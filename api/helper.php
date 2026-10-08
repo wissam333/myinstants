@@ -413,15 +413,163 @@ function fetch_mp3_durations($urls) {
 function apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration) {
     if (!$with_duration && $min_duration === null && $max_duration === null) return $sounds;
     $urls = [];
-    foreach ($sounds as $s) { if (!empty($s['mp3'])) $urls[] = $s['mp3']; }
+    foreach ($sounds as $s) {
+        // Sounds with a trusted pre-known duration (e.g. 101soundboards JSON-LD) skip probing.
+        if (!empty($s['mp3']) && (!isset($s['duration']) || !is_numeric($s['duration']))) $urls[] = $s['mp3'];
+    }
     $durations = fetch_mp3_durations($urls);
     $out = [];
     foreach ($sounds as $s) {
-        $d = isset($s['mp3'], $durations[$s['mp3']]) ? $durations[$s['mp3']] : null;
+        if (isset($s['duration']) && is_numeric($s['duration'])) {
+            $d = round((float)$s['duration'], 2);
+        } else {
+            $d = isset($s['mp3'], $durations[$s['mp3']]) ? $durations[$s['mp3']] : null;
+        }
         if ($min_duration !== null && ($d === null || $d < $min_duration)) continue;
         if ($max_duration !== null && ($d === null || $d > $max_duration)) continue;
         $s['duration'] = $d;
         $out[] = $s;
     }
     return $out;
+}
+
+// --- Multi-source helpers (Voicy / MemeSoundboard / 101Soundboards) ---
+
+function iso8601_to_seconds($s) {
+    if ($s === null || $s === '') return null;
+    if (is_numeric($s)) return (float)$s;
+    if (!is_string($s)) return null;
+    if (preg_match('/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/', trim($s), $m)) {
+        $d = isset($m[1]) && $m[1] !== '' ? (int)$m[1] : 0;
+        $h = isset($m[2]) && $m[2] !== '' ? (int)$m[2] : 0;
+        $i = isset($m[3]) && $m[3] !== '' ? (int)$m[3] : 0;
+        $sec = isset($m[4]) && $m[4] !== '' ? (float)$m[4] : 0;
+        if ($d == 0 && $h == 0 && $i == 0 && $sec == 0) return null;
+        return $d * 86400 + $h * 3600 + $i * 60 + $sec;
+    }
+    return null;
+}
+
+function round_robin_merge($lists) {
+    $out = [];
+    $i = 0;
+    while (true) {
+        $added = false;
+        foreach ($lists as $l) {
+            if (isset($l[$i])) { $out[] = $l[$i]; $added = true; }
+        }
+        if (!$added) break;
+        $i++;
+    }
+    return $out;
+}
+
+function collect_101_items($node, &$sounds, &$seen) {
+    if (!is_array($node)) return;
+    if (isset($node['itemListElement']) && is_array($node['itemListElement'])) {
+        foreach ($node['itemListElement'] as $el) {
+            $item = (is_array($el) && isset($el['item']) && is_array($el['item'])) ? $el['item'] : $el;
+            if (!is_array($item)) continue;
+            $name = $item['name'] ?? null;
+            $mp3 = $item['contentUrl'] ?? $item['contentURL'] ?? null;
+            if (!$name || !$mp3 || isset($seen[$mp3])) continue;
+            $seen[$mp3] = true;
+            $url = $item['url'] ?? null;
+            $id = $url ? basename(parse_url($url, PHP_URL_PATH)) : md5($mp3);
+            $sounds[] = [
+                "id" => $id,
+                "title" => html_entity_decode($name, ENT_QUOTES | ENT_HTML5),
+                "url" => $url,
+                "mp3" => $mp3,
+                "thumbnail" => $item['thumbnailUrl'] ?? $item['thumbnail'] ?? null,
+                "duration" => iso8601_to_seconds($item['duration'] ?? null),
+                "source" => "101soundboards"
+            ];
+        }
+        return;
+    }
+    if (isset($node['mainEntity'])) {
+        $me = $node['mainEntity'];
+        if (is_array($me)) {
+            if (isset($me['itemListElement']) || isset($me['@type'])) collect_101_items($me, $sounds, $seen);
+            else foreach ($me as $sub) collect_101_items($sub, $sounds, $seen);
+        }
+        return;
+    }
+    foreach ($node as $v) {
+        if (is_array($v) && (isset($v['itemListElement']) || (($v['@type'] ?? null) === 'ItemList'))) {
+            collect_101_items($v, $sounds, $seen);
+        }
+    }
+}
+
+function parse_101_sounds($html) {
+    $sounds = [];
+    $seen = [];
+    foreach ($html->find('script') as $script) {
+        if (strtolower(trim($script->getAttribute('type'))) !== 'application/ld+json') continue;
+        $data = json_decode(trim($script->innertext), true);
+        if (!is_array($data)) continue;
+        if (isset($data['@graph']) && is_array($data['@graph'])) {
+            foreach ($data['@graph'] as $node) collect_101_items($node, $sounds, $seen);
+        } else {
+            collect_101_items($data, $sounds, $seen);
+        }
+    }
+    return $sounds;
+}
+
+function parse_msb_api($data, $query) {
+    $sounds = [];
+    $total_pages = null;
+    if (!is_array($data)) return [$sounds, $total_pages];
+    $list = $data['data']['sounds'] ?? $data['data']['results'] ?? $data['sounds'] ?? $data['results'] ?? null;
+    if (!is_array($list)) {
+        foreach (['data', null] as $wrap) {
+            $cand = ($wrap === null) ? $data : ($data[$wrap] ?? null);
+            if (is_array($cand) && $cand !== [] && array_keys($cand) === range(0, count($cand) - 1)) {
+                $list = $cand;
+                break;
+            }
+        }
+        if (!is_array($list)) $list = [];
+    }
+    $meta = (isset($data['meta']) && is_array($data['meta'])) ? $data['meta'] : [];
+    if (isset($data['data']) && is_array($data['data'])) {
+        foreach (['meta', 'initialMeta', 'pagination'] as $k) {
+            if (isset($data['data'][$k]) && is_array($data['data'][$k])) { $meta = $data['data'][$k]; break; }
+        }
+    }
+    foreach (['last_page', 'lastPage', 'total_pages', 'totalPages'] as $k) {
+        if (isset($meta[$k]) && is_numeric($meta[$k])) { $total_pages = (int)$meta[$k]; break; }
+    }
+    if ($total_pages === null) {
+        foreach (['total_items', 'totalItems', 'total', 'count'] as $k) {
+            if (isset($meta[$k]) && is_numeric($meta[$k]) && (int)$meta[$k] > 0) {
+                $total_pages = (int)ceil((int)$meta[$k] / 35);
+                break;
+            }
+        }
+    }
+    foreach ($list as $item) {
+        if (!is_array($item)) continue;
+        $title = $item['name'] ?? $item['title'] ?? null;
+        $mp3 = $item['sound_file'] ?? $item['mp3'] ?? $item['audio'] ?? $item['audio_url'] ?? $item['file'] ?? null;
+        if (!$title || !$mp3) continue;
+        $id = isset($item['id']) ? (string)$item['id'] : null;
+        $slug = $item['slug'] ?? null;
+        if ($id !== null && $slug) $detail = "https://memesoundboard.io/" . $slug . "-" . $id;
+        elseif ($id !== null) $detail = "https://memesoundboard.io/sound-" . $id;
+        else { $id = md5($mp3); $detail = "https://memesoundboard.io/search/" . rawurlencode($query); }
+        $dur = $item['duration'] ?? $item['length'] ?? null;
+        $sounds[] = [
+            "id" => $id,
+            "title" => $title,
+            "url" => $detail,
+            "mp3" => $mp3,
+            "duration" => (is_numeric($dur) ? (float)$dur : null),
+            "source" => "memesoundboard"
+        ];
+    }
+    return [$sounds, $total_pages];
 }
