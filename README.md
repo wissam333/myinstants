@@ -126,7 +126,15 @@ A typical successful response (HTTP 200) will return a JSON object like this:
 
 _`page` / `count` / `total_pages` / `has_next` are returned by all list endpoints (`total_pages` is parsed from the upstream `Page X of Y` title, `null` when undetectable). `duration` (seconds) only appears when `with_duration=1` or `min_duration` / `max_duration` is used. `/category` additionally echoes `category` and `region` (`null` when global)._
 
-_`source` is `"live"` normally, or `"archive"` when `myinstants.com` blocked the request and the data was served from the latest Wayback Machine snapshot instead (data may be older; `mp3` links still point at the live site, and archive responses are edge-cached for 24h). If neither source works, the API returns HTTP `502` — retry later._
+_`source` is `"live"` normally, `"proxy"` when served via your scraper proxy, or `"archive"` when `myinstants.com` blocked the request and the data was served from the latest Wayback Machine snapshot instead (data may be older; `mp3` links still point at the live site, and archive responses are edge-cached for 24h). If no source works, the API returns HTTP `502` — retry later._
+
+> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it. For reliable scraping, set the `UPSTREAM_PROXY_TEMPLATE` env var (Vercel Dashboard → Settings → Environment Variables) to a scraper API that renders with real browsers, using `{url}` as placeholder:
+>
+> - ScraperAPI: `https://api.scraperapi.com?api_key=KEY&url={url}`
+> - ScrapingBee: `https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}`
+> - ZenRows: `https://api.zenrows.com/v1/?apikey=KEY&url={url}`
+>
+> Without it, the API falls back to Wayback snapshots when blocked.
 
 _Note: For the `/detail` endpoint, the `data` object will contain extra fields like `description`, `tags`, `favorites`, `views`, and `uploader` (plus `duration` when `?with_duration=1` is passed)._
 
