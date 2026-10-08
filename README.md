@@ -142,6 +142,16 @@ All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 
   }
   ```
 
+- **502 Error**:
+  - When `myinstants.com` refuses the request (HTTP 403/429 anti-bot protection). Retry later — cached responses still work.
+  ```json
+  {
+    "status": 502,
+    "author": "wissam333",
+    "message": "Upstream myinstants.com refused this request (HTTP 403, anti-bot protection). Please retry later."
+  }
+  ```
+
 ## 🌐 Examples
 
 ### Example 1: Get Trending Sounds by Region

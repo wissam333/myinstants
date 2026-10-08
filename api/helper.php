@@ -5,17 +5,37 @@ require_once "simple_html_dom.php";
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
 
-function fetch_html($url) {
+function fetch_html($url, $retry = true) {
+    static $cookieFile = null;
+    if ($cookieFile === null) $cookieFile = sys_get_temp_dir() . '/myinstants_cookies.txt';
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Language: en-US,en;q=0.9',
+        'Referer: https://www.myinstants.com/',
+        'Upgrade-Insecure-Requests: 1'
+    ]);
+    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     $htmlString = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
+    // Note: curl_close() intentionally omitted — deprecated since PHP 8.5.
+    if (($httpCode == 403 || $httpCode == 429) && $retry) {
+        sleep(1);
+        return fetch_html($url, false);
+    }
     if ($httpCode >= 400 || !$htmlString) {
+        if ($httpCode == 403 || $httpCode == 429) {
+            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection). Please retry later.", "502");
+        }
         output_error("Fetch failed: HTTP $httpCode, cURL Error: $error");
     }
     return str_get_html($htmlString);
