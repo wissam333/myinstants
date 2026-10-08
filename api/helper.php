@@ -519,10 +519,11 @@ function parse_101_sounds($html) {
     return $sounds;
 }
 
-function parse_msb_api($data, $query) {
+function parse_msb_api($data, $query, $page = 1, $page_size = 35) {
     $sounds = [];
     $total_pages = null;
-    if (!is_array($data)) return [$sounds, $total_pages];
+    $has_next = null;
+    if (!is_array($data)) return [$sounds, $total_pages, $has_next];
     $list = $data['data']['sounds'] ?? $data['data']['results'] ?? $data['sounds'] ?? $data['results'] ?? null;
     if (!is_array($list)) {
         foreach (['data', null] as $wrap) {
@@ -534,32 +535,48 @@ function parse_msb_api($data, $query) {
         }
         if (!is_array($list)) $list = [];
     }
-    $meta = (isset($data['meta']) && is_array($data['meta'])) ? $data['meta'] : [];
-    if (isset($data['data']) && is_array($data['data'])) {
-        foreach (['meta', 'initialMeta', 'pagination'] as $k) {
-            if (isset($data['data'][$k]) && is_array($data['data'][$k])) { $meta = $data['data'][$k]; break; }
+    // DRF-style pagination: top-level count/next/previous.
+    $next = $data['next'] ?? null;
+    if (is_string($next) || $next === null) {
+        if (array_key_exists('next', $data)) $has_next = ($next !== null && $next !== '');
+    }
+    $total = $data['count'] ?? null;
+    if ($total === null) {
+        $meta = (isset($data['meta']) && is_array($data['meta'])) ? $data['meta'] : [];
+        if (isset($data['data']) && is_array($data['data'])) {
+            foreach (['meta', 'initialMeta', 'pagination'] as $k) {
+                if (isset($data['data'][$k]) && is_array($data['data'][$k])) { $meta = $data['data'][$k]; break; }
+            }
         }
-    }
-    foreach (['last_page', 'lastPage', 'total_pages', 'totalPages'] as $k) {
-        if (isset($meta[$k]) && is_numeric($meta[$k])) { $total_pages = (int)$meta[$k]; break; }
-    }
-    if ($total_pages === null) {
-        foreach (['total_items', 'totalItems', 'total', 'count'] as $k) {
-            if (isset($meta[$k]) && is_numeric($meta[$k]) && (int)$meta[$k] > 0) {
-                $total_pages = (int)ceil((int)$meta[$k] / 35);
-                break;
+        foreach (['last_page', 'lastPage', 'total_pages', 'totalPages'] as $k) {
+            if (isset($meta[$k]) && is_numeric($meta[$k])) { $total_pages = (int)$meta[$k]; break; }
+        }
+        if ($total_pages === null) {
+            foreach (['total_items', 'totalItems', 'total', 'count'] as $k) {
+                if (isset($meta[$k]) && is_numeric($meta[$k]) && (int)$meta[$k] > 0) {
+                    $total = (int)$meta[$k];
+                    break;
+                }
             }
         }
     }
+    if ($total_pages === null && is_numeric($total) && (int)$total > 0 && $page_size > 0) {
+        $total_pages = (int)ceil((int)$total / $page_size);
+    }
+    if ($has_next === null && $total_pages !== null) $has_next = ($page < $total_pages);
     foreach ($list as $item) {
         if (!is_array($item)) continue;
         $title = $item['name'] ?? $item['title'] ?? null;
         $mp3 = $item['sound_file'] ?? $item['mp3'] ?? $item['audio'] ?? $item['audio_url'] ?? $item['file'] ?? null;
         if (!$title || !$mp3) continue;
+        // sound_file is a relative path (sounds/xxx.mp3): resolve against media host.
+        if (!preg_match('#^https?://#i', $mp3)) {
+            $mp3 = 'https://play-v1.soundboard.cloud/media/' . ltrim($mp3, '/');
+        }
         $id = isset($item['id']) ? (string)$item['id'] : null;
         $slug = $item['slug'] ?? null;
         if ($id !== null && $slug) $detail = "https://memesoundboard.io/" . $slug . "-" . $id;
-        elseif ($id !== null) $detail = "https://memesoundboard.io/sound-" . $id;
+        elseif ($id !== null) $detail = "https://memesoundboard.io/search/" . rawurlencode($query);
         else { $id = md5($mp3); $detail = "https://memesoundboard.io/search/" . rawurlencode($query); }
         $dur = $item['duration'] ?? $item['length'] ?? null;
         $sounds[] = [
@@ -571,5 +588,5 @@ function parse_msb_api($data, $query) {
             "source" => "memesoundboard"
         ];
     }
-    return [$sounds, $total_pages];
+    return [$sounds, $total_pages, $has_next];
 }

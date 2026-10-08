@@ -56,10 +56,11 @@ $lists[] = $miList;
 $msb = $bodyBySource["memesoundboard"];
 $msbList = [];
 $msbTotal = null;
+$msbHasNext = null;
 $msbOk = ($msb[1] >= 200 && $msb[1] < 300);
 if ($msb[1] >= 200 && $msb[1] < 300 && $msb[0]) {
     $msbData = json_decode($msb[0], true);
-    if (is_array($msbData)) list($msbList, $msbTotal) = parse_msb_api($msbData, $query);
+    if (is_array($msbData)) list($msbList, $msbTotal, $msbHasNext) = parse_msb_api($msbData, $query, $page, 35);
 }
 $sources["memesoundboard"] = ["ok" => $msbOk, "count" => count($msbList), "total_pages" => $msbTotal];
 $lists[] = $msbList;
@@ -83,6 +84,7 @@ $sounds = round_robin_merge($lists);
 $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
 
 $has_next = null;
+if ($msbHasNext === true) $has_next = true;
 foreach (["myinstants" => $miTotal, "memesoundboard" => $msbTotal] as $src => $tp) {
     if ($tp !== null && $page < $tp) { $has_next = true; break; }
 }

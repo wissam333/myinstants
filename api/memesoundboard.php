@@ -15,11 +15,12 @@ if ($code < 200 || $code >= 300 || !$body) output_error("Upstream memesoundboard
 $data = json_decode($body, true);
 if (!is_array($data)) output_error("Upstream memesoundboard returned invalid data. Please retry later.", "502");
 
-list($sounds, $total_pages) = parse_msb_api($data, $query);
+list($sounds, $total_pages, $msb_has_next) = parse_msb_api($data, $query, $page, 35);
 $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
 $meta = array_merge(
     ["source" => "memesoundboard"],
     pagination_meta($page, $total_pages, count($sounds))
 );
+if ($msb_has_next !== null) $meta["has_next"] = $msb_has_next;
 output_json($sounds, "200", $meta);
 ?>
