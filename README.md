@@ -128,13 +128,25 @@ _`page` / `count` / `total_pages` / `has_next` are returned by all list endpoint
 
 _`source` is `"live"` normally, `"proxy"` when served via your scraper proxy, or `"archive"` when `myinstants.com` blocked the request and the data was served from the latest Wayback Machine snapshot instead (data may be older; `mp3` links still point at the live site, and archive responses are edge-cached for 24h). If no source works, the API returns HTTP `502` — retry later._
 
-> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it. For reliable scraping, set the `UPSTREAM_PROXY_TEMPLATE` env var (Vercel Dashboard → Settings → Environment Variables) to a scraper API that renders with real browsers, using `{url}` as placeholder:
+> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it, and free forward-proxies (corsproxy.io, allorigins, codetabs…) don't either — they get the same challenge page. For reliable scraping, set the `UPSTREAM_PROXY_TEMPLATES` env var (Vercel Dashboard → Settings → Environment Variables) to a **comma-separated** list of scraper APIs that render with real browsers, using `{url}` as placeholder. Templates are tried in order until one returns valid HTML, so you can chain free tiers (e.g. ScraperAPI ~5,000 first-week credits + ~1,000/mo, ScrapingBee ~1,000 credits, ZenRows ~1,000 basic + 40 protected trial):
 >
-> - ScraperAPI: `https://api.scraperapi.com?api_key=KEY&url={url}`
-> - ScrapingBee: `https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}`
-> - ZenRows: `https://api.zenrows.com/v1/?apikey=KEY&url={url}`
+> ```
+> UPSTREAM_PROXY_TEMPLATES=https://api.scraperapi.com?api_key=KEY1&url={url},https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url},https://api.zenrows.com/v1/?apikey=KEY3&url={url}
+> ```
 >
-> Without it, the API falls back to Wayback snapshots when blocked.
+> (The old singular `UPSTREAM_PROXY_TEMPLATE` still works for a single entry.)
+>
+> Without proxies, the API falls back to Wayback snapshots when blocked.
+>
+> **Month-long caching:** edge-cache TTLs are env-configurable (seconds; `2592000` ≈ 30 days). Proxy/edge hits don't burn proxy credits, so one proxied fetch can serve a URL for a month:
+>
+> ```
+> CACHE_SMAXAGE_LIVE=2592000
+> CACHE_SMAXAGE_PROXY=2592000
+> CACHE_SMAXAGE_ARCHIVE=2592000
+> ```
+>
+> (Defaults: live/proxy `3600`, archive `86400`. Note: Vercel's edge cache is best-effort — entries can be evicted under pressure and every redeploy purges it, causing a fresh round of upstream fetches. Cache keys include the full query string, so each `page`/filter combo is cached separately.)
 
 _Note: For the `/detail` endpoint, the `data` object will contain extra fields like `description`, `tags`, `favorites`, `views`, and `uploader` (plus `duration` when `?with_duration=1` is passed)._
 

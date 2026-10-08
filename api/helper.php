@@ -40,9 +40,32 @@ function curl_fetch($url, $timeout = 15) {
     return [$body, $code, $error];
 }
 
-function proxy_template() {
-    $t = getenv('UPSTREAM_PROXY_TEMPLATE');
-    return ($t && strpos($t, '{url}') !== false) ? $t : null;
+function proxy_templates() {
+    // Plural wins; singular kept for backward compatibility.
+    // Comma-separated, tried in order until one returns valid HTML, e.g.:
+    //   UPSTREAM_PROXY_TEMPLATES="https://api.scraperapi.com?api_key=K1&url={url},https://app.scrapingbee.com/api/v1/?api_key=K2&url={url}"
+    $raw = getenv('UPSTREAM_PROXY_TEMPLATES');
+    if (!$raw) {
+        $single = getenv('UPSTREAM_PROXY_TEMPLATE');
+        if ($single) $raw = $single;
+    }
+    $out = [];
+    if ($raw) {
+        foreach (explode(',', $raw) as $t) {
+            $t = trim($t);
+            if ($t !== '' && strpos($t, '{url}') !== false) $out[] = $t;
+        }
+    }
+    return $out;
+}
+
+function cache_smaxage($source) {
+    $env = ['live' => 'CACHE_SMAXAGE_LIVE', 'proxy' => 'CACHE_SMAXAGE_PROXY', 'archive' => 'CACHE_SMAXAGE_ARCHIVE'];
+    $defaults = ['live' => 3600, 'proxy' => 3600, 'archive' => 86400];
+    $key = $env[$source] ?? $env['live'];
+    $v = getenv($key);
+    if ($v !== false && preg_match('/^\d+$/', (string)$v)) return (int)$v;
+    return $defaults[$source] ?? 3600;
 }
 
 function valid_scrape_html($body) {
@@ -63,22 +86,22 @@ function fetch_html($url, $retry = true) {
         return fetch_html($url, false);
     }
     if ($httpCode == 403 || $httpCode == 429 || !$htmlString) {
-        // Escape hatch: paid/free-tier scraper proxy (real browsers that pass
-        // Cloudflare). Set UPSTREAM_PROXY_TEMPLATE env var, e.g.:
-        //   https://api.scraperapi.com?api_key=KEY&url={url}
-        //   https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}
-        //   https://api.zenrows.com/v1/?apikey=KEY&url={url}
-        $tpl = proxy_template();
-        if ($tpl) {
-            list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 25);
-            if ($pCode >= 200 && $pCode < 300) {
-                $pHtml = valid_scrape_html($pBody);
-                if ($pHtml) {
-                    $fetch_source = 'proxy';
-                    return $pHtml;
-                }
+    // Escape hatch: paid/free-tier scraper proxies (real browsers that pass
+    // Cloudflare). Set UPSTREAM_PROXY_TEMPLATES env var (comma-separated,
+    // tried in order), e.g.:
+    //   https://api.scraperapi.com?api_key=KEY&url={url}
+    //   https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}
+    //   https://api.zenrows.com/v1/?apikey=KEY&url={url}
+    foreach (proxy_templates() as $tpl) {
+        list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 15);
+        if ($pCode >= 200 && $pCode < 300) {
+            $pHtml = valid_scrape_html($pBody);
+            if ($pHtml) {
+                $fetch_source = 'proxy';
+                return $pHtml;
             }
         }
+    }
         // Fallback: latest Wayback Machine snapshot (raw markup via id_ suffix).
         list($aBody, $aCode) = curl_fetch(wayback_url($url), 12);
         if ($aCode >= 200 && $aCode < 300) {
@@ -133,8 +156,8 @@ function output_error($msg, $status = "404") {
 function output_json($data, $status = "200", $meta = []) {
     http_response_code((int)$status);
     header("Access-Control-Allow-Origin: *");
-    // Archive snapshots are immutable: cache them much longer.
-    $maxAge = (isset($meta["source"]) && $meta["source"] === "archive") ? 86400 : 3600;
+    // Archive snapshots are immutable: cache them much longer (configurable).
+    $maxAge = cache_smaxage($meta["source"] ?? "live");
     header("Cache-Control: s-maxage=$maxAge, stale-while-revalidate");
     $response = array_merge(["status" => $status, "author" => "wissam333"], $meta, ["data" => $data]);
     echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
