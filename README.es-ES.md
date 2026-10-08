@@ -130,13 +130,25 @@ _`page` / `count` / `total_pages` / `has_next` los devuelven todos los endpoints
 
 _`source` es `"live"` normalmente, `"proxy"` si se sirvió vía tu proxy de scraping, o `"archive"` cuando `myinstants.com` bloqueó la petición y los datos vienen de la última instantánea de Wayback Machine (pueden ser más antiguos; los enlaces `mp3` siguen apuntando al sitio en vivo, y estas respuestas se cachean 24h). Si ninguna fuente funciona, la API devuelve HTTP `502` — reintenta más tarde._
 
-> **Nota anti-bots:** `myinstants.com` usa protección Cloudflare que a veces bloquea IPs de centros de datos (Vercel) con HTTP 403. Solo con cabeceras de navegador no se puede pasar. Para un scraping fiable, define la variable de entorno `UPSTREAM_PROXY_TEMPLATE` (Vercel Dashboard → Settings → Environment Variables) con una API de scraping que use navegadores reales, usando `{url}` como marcador:
+> **Nota anti-bots:** `myinstants.com` usa protección Cloudflare que a veces bloquea IPs de centros de datos (Vercel) con HTTP 403. Solo con cabeceras de navegador no se puede pasar, y los proxies gratuitos simples (corsproxy.io, allorigins, codetabs…) tampoco — reciben la misma página de desafío. Para un scraping fiable, define la variable de entorno `UPSTREAM_PROXY_TEMPLATES` (Vercel Dashboard → Settings → Environment Variables) con una lista **separada por comas** de APIs de scraping que usen navegadores reales, usando `{url}` como marcador. Se prueban en orden hasta que una devuelva HTML válido, así puedes encadenar niveles gratuitos (p. ej. ScraperAPI ~5.000 créditos la primera semana + ~1.000/mes, ScrapingBee ~1.000 créditos, ZenRows ~1.000 básicos + 40 protegidos):
 >
-> - ScraperAPI: `https://api.scraperapi.com?api_key=KEY&url={url}`
-> - ScrapingBee: `https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}`
-> - ZenRows: `https://api.zenrows.com/v1/?apikey=KEY&url={url}`
+> ```
+> UPSTREAM_PROXY_TEMPLATES=https://api.scraperapi.com?api_key=KEY1&url={url},https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url},https://api.zenrows.com/v1/?apikey=KEY3&url={url}
+> ```
 >
-> Sin ella, la API recurre a instantáneas de Wayback cuando la bloquean._
+> (La antigua `UPSTREAM_PROXY_TEMPLATE` singular sigue funcionando para una sola entrada.)
+>
+> Sin proxies, la API recurre a instantáneas de Wayback cuando la bloquean.
+>
+> **Caché de un mes:** los TTL de caché edge se configuran por entorno (segundos; `2592000` ≈ 30 días). Los aciertos de caché no gastan créditos del proxy, así que una sola petición con proxy puede servir una URL durante un mes:
+>
+> ```
+> CACHE_SMAXAGE_LIVE=2592000
+> CACHE_SMAXAGE_PROXY=2592000
+> CACHE_SMAXAGE_ARCHIVE=2592000
+> ```
+>
+> (Valores por defecto: live/proxy `3600`, archive `86400`. Nota: la caché edge de Vercel es best-effort — puede expulsar entradas bajo presión y cada redeploy la purga, provocando una nueva ronda de peticiones. La clave de caché incluye toda la query string, así que cada combinación `page`/filtro se cachea por separado.)
 
 _Nota: Para el endpoint `/detail`, el objeto `data` contendrá campos adicionales como `description`, `tags`, `favorites`, `views` y `uploader` (más `duration` con `?with_duration=1`)._
 
