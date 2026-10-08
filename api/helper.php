@@ -40,6 +40,20 @@ function curl_fetch($url, $timeout = 15) {
     return [$body, $code, $error];
 }
 
+function proxy_template() {
+    $t = getenv('UPSTREAM_PROXY_TEMPLATE');
+    return ($t && strpos($t, '{url}') !== false) ? $t : null;
+}
+
+function valid_scrape_html($body) {
+    if (!$body) return null;
+    $html = str_get_html($body);
+    if ($html && (count($html->find('div.instant')) > 0 || $html->find('h1#instant-page-title', 0))) {
+        return $html;
+    }
+    return null;
+}
+
 function fetch_html($url, $retry = true) {
     global $fetch_source;
     $fetch_source = 'live';
@@ -49,11 +63,27 @@ function fetch_html($url, $retry = true) {
         return fetch_html($url, false);
     }
     if ($httpCode == 403 || $httpCode == 429 || !$htmlString) {
+        // Escape hatch: paid/free-tier scraper proxy (real browsers that pass
+        // Cloudflare). Set UPSTREAM_PROXY_TEMPLATE env var, e.g.:
+        //   https://api.scraperapi.com?api_key=KEY&url={url}
+        //   https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}
+        //   https://api.zenrows.com/v1/?apikey=KEY&url={url}
+        $tpl = proxy_template();
+        if ($tpl) {
+            list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 25);
+            if ($pCode >= 200 && $pCode < 300) {
+                $pHtml = valid_scrape_html($pBody);
+                if ($pHtml) {
+                    $fetch_source = 'proxy';
+                    return $pHtml;
+                }
+            }
+        }
         // Fallback: latest Wayback Machine snapshot (raw markup via id_ suffix).
         list($aBody, $aCode) = curl_fetch(wayback_url($url), 12);
-        if ($aCode >= 200 && $aCode < 300 && $aBody) {
-            $aHtml = str_get_html($aBody);
-            if ($aHtml && (count($aHtml->find('div.instant')) > 0 || $aHtml->find('h1#instant-page-title', 0))) {
+        if ($aCode >= 200 && $aCode < 300) {
+            $aHtml = valid_scrape_html($aBody);
+            if ($aHtml) {
                 $fetch_source = 'archive';
                 return $aHtml;
             }
@@ -61,7 +91,7 @@ function fetch_html($url, $retry = true) {
     }
     if ($httpCode >= 400 || !$htmlString) {
         if ($httpCode == 403 || $httpCode == 429) {
-            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no archive snapshot is available. Please retry later.", "502");
+            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no fallback source worked. Retry later or set UPSTREAM_PROXY_TEMPLATE.", "502");
         }
         output_error("Fetch failed: HTTP $httpCode, cURL Error: $error");
     }

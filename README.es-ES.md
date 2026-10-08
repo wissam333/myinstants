@@ -128,7 +128,15 @@ Una respuesta exitosa típica (HTTP 200) devolverá un objeto JSON como este:
 
 _`page` / `count` / `total_pages` / `has_next` los devuelven todos los endpoints de lista (`total_pages` se extrae del título original `Page X of Y`, `null` si no se detecta). `duration` (segundos) solo aparece con `with_duration=1` o `min_duration` / `max_duration`. `/category` además devuelve `category` y `region` (`null` en el listado global)._
 
-_`source` es `"live"` normalmente, o `"archive"` cuando `myinstants.com` bloqueó la petición y los datos vienen de la última instantánea de Wayback Machine (pueden ser más antiguos; los enlaces `mp3` siguen apuntando al sitio en vivo, y estas respuestas se cachean 24h). Si ninguna fuente funciona, la API devuelve HTTP `502` — reintenta más tarde._
+_`source` es `"live"` normalmente, `"proxy"` si se sirvió vía tu proxy de scraping, o `"archive"` cuando `myinstants.com` bloqueó la petición y los datos vienen de la última instantánea de Wayback Machine (pueden ser más antiguos; los enlaces `mp3` siguen apuntando al sitio en vivo, y estas respuestas se cachean 24h). Si ninguna fuente funciona, la API devuelve HTTP `502` — reintenta más tarde._
+
+> **Nota anti-bots:** `myinstants.com` usa protección Cloudflare que a veces bloquea IPs de centros de datos (Vercel) con HTTP 403. Solo con cabeceras de navegador no se puede pasar. Para un scraping fiable, define la variable de entorno `UPSTREAM_PROXY_TEMPLATE` (Vercel Dashboard → Settings → Environment Variables) con una API de scraping que use navegadores reales, usando `{url}` como marcador:
+>
+> - ScraperAPI: `https://api.scraperapi.com?api_key=KEY&url={url}`
+> - ScrapingBee: `https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}`
+> - ZenRows: `https://api.zenrows.com/v1/?apikey=KEY&url={url}`
+>
+> Sin ella, la API recurre a instantáneas de Wayback cuando la bloquean._
 
 _Nota: Para el endpoint `/detail`, el objeto `data` contendrá campos adicionales como `description`, `tags`, `favorites`, `views` y `uploader` (más `duration` con `?with_duration=1`)._
 
