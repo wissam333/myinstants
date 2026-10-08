@@ -6,7 +6,8 @@
   },
   "routes": [
     { "src": "^/$", "dest": "/api/index.php" },
-    { "src": "^/(101soundboards|best|category|detail|favorites|freesound|memesoundboard|recent|search|search_all|trending|uploaded)$", "dest": "/api/$1.php" },
+    { "src": "^/detail$", "dest": "/api/detail.php" },
+    { "src": "^/(101soundboards|best|category|favorites|freesound|memesoundboard|recent|search|search_all|trending|uploaded)$", "dest": "/api/list.php" },
     { "src": "^/(.*)$", "dest": "/api/404.php" }
   ]
 }

@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json");
-require "helper.php";
+require __DIR__ . "/../lib/helper.php";
 
 $id = $_GET['id'] ?? null;
 if (!$id) output_error("Query parameter 'id' is required, example: ?id=akh-26815", "400");
