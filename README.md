@@ -134,15 +134,28 @@ _`page` / `count` / `total_pages` / `has_next` are returned by all list endpoint
 
 _`source` is `"live"` normally, `"proxy"` when served via your scraper proxy, or `"archive"` when `myinstants.com` blocked the request and the data was served from the latest Wayback Machine snapshot instead (data may be older; `mp3` links still point at the live site, and archive responses are edge-cached for 24h). If no source works, the API returns HTTP `502` — retry later._
 
-> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it, and free forward-proxies (corsproxy.io, allorigins, codetabs…) don't either — they get the same challenge page. For reliable scraping, set the `UPSTREAM_PROXY_TEMPLATES` env var (Vercel Dashboard → Settings → Environment Variables) to a **comma-separated** list of scraper APIs that render with real browsers, using `{url}` as placeholder. Templates are tried in order until one returns valid HTML, so you can chain free tiers (e.g. ScraperAPI ~5,000 first-week credits + ~1,000/mo, ScrapingBee ~1,000 credits, ZenRows ~1,000 basic + 40 protected trial):
+> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it, and free forward-proxies (corsproxy.io, allorigins, codetabs…) don't either — they get the same challenge page. The reliable, serverless-friendly fix is a free-tier **scraper API** (a cloud browser that solves the challenge for you). No VPS or extra infrastructure needed:
+>
+> 1. Sign up for free credits — recommended: [ZenRows](https://www.zenrows.com/) (~2,000 free credits, no card) or [ScrapingBee](https://www.scrapingbee.com/) (~1,000 free credits).
+> 2. Copy your API key from their dashboard.
+> 3. Set the `UPSTREAM_PROXY_TEMPLATES` env var in Vercel (Dashboard → Settings → Environment Variables) to the template **with the anti-bot flags included** — without them, the plain fetch gets the same Cloudflare block:
 >
 > ```
-> UPSTREAM_PROXY_TEMPLATES=https://api.scraperapi.com?api_key=KEY1&url={url},https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url},https://api.zenrows.com/v1/?apikey=KEY3&url={url}
+> # ZenRows (recommended) — antibot+js_render flags are what defeat Cloudflare:
+> UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY&url={url}&js_render=true&antibot=true&premium_proxy=true
+>
+> # ScrapingBee — stealth_proxy is their Cloudflare-bypass mode:
+> UPSTREAM_PROXY_TEMPLATES=https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}&render_js=true&stealth_proxy=1
+>
+> # You can chain several (comma-separated, tried in order) to mix free tiers:
+> UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY1&url={url}&js_render=true&antibot=true,https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url}&render_js=true&stealth_proxy=1
 > ```
 >
 > (The old singular `UPSTREAM_PROXY_TEMPLATE` still works for a single entry.)
 >
-> Without proxies, the API falls back to Wayback snapshots when blocked.
+> **Credits last longer than they look:** the proxy is only consulted *after* a direct fetch fails with 403/429 (live is always tried first), and every proxied page is edge-cached (see month-long caching below), so one credit can serve many requests. Rough ZenRows math: an antibot request costs ~25 credits → ~80 protected fetches per free signup, stretched much further by caching. Rotate/re-sign-up if you burn through them.
+>
+> Without any proxy configured, the API automatically falls back to Wayback Machine snapshots when blocked (`source: "archive"`, data may be slightly stale), and the `/memesoundboard`, `/101soundboards`, and `/freesound` sources are unaffected by myinstants' Cloudflare entirely.
 >
 > **Month-long caching:** edge-cache TTLs are env-configurable (seconds; `2592000` ≈ 30 days). Proxy/edge hits don't burn proxy credits, so one proxied fetch can serve a URL for a month:
 >
