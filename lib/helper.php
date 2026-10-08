@@ -43,7 +43,7 @@ function curl_fetch($url, $timeout = 15) {
 function proxy_templates() {
     // Plural wins; singular kept for backward compatibility.
     // Comma-separated, tried in order until one returns valid HTML, e.g.:
-    //   UPSTREAM_PROXY_TEMPLATES="https://api.scraperapi.com?api_key=K1&url={url},https://app.scrapingbee.com/api/v1/?api_key=K2&url={url}"
+    //   UPSTREAM_PROXY_TEMPLATES="https://api.zenrows.com/v1/?apikey=K1&url={url}&js_render=true&antibot=true,https://app.scrapingbee.com/api/v1/?api_key=K2&url={url}&render_js=true&stealth_proxy=1"
     $raw = getenv('UPSTREAM_PROXY_TEMPLATES');
     if (!$raw) {
         $single = getenv('UPSTREAM_PROXY_TEMPLATE');
@@ -114,7 +114,7 @@ function fetch_html($url, $retry = true) {
     }
     if ($httpCode >= 400 || !$htmlString) {
         if ($httpCode == 403 || $httpCode == 429) {
-            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no fallback source worked. Retry later or set UPSTREAM_PROXY_TEMPLATE.", "502");
+            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no fallback source worked. Retry later or set UPSTREAM_PROXY_TEMPLATES.", "502");
         }
         output_error("Fetch failed: HTTP $httpCode, cURL Error: $error");
     }
