@@ -70,8 +70,6 @@
 
 ### Endpoints
 
-Base URL: https://myinstants-api.vercel.app
-
 | Request          | Response                 | Parameter  |
 | :--------------- | :----------------------- | :--------: |
 | `GET /trending`  | Trending based region    | `q`, `page` |
