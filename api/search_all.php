@@ -14,6 +14,21 @@ $targets = [
     "101soundboards" => "https://www.101soundboards.com/search/" . rawurlencode($query) . ($page > 1 ? "?page=" . $page : "")
 ];
 
+// Freesound joins only when configured (free key via FREESOUND_API_KEY).
+$fsKey = freesound_key();
+$fsPageSize = 30;
+if ($fsKey) {
+    $fsParams = [
+        "query" => $query,
+        "page" => $page,
+        "page_size" => $fsPageSize,
+        "sort" => "downloads_desc",
+        "fields" => "id,name,previews,duration,license,username,images",
+        "token" => $fsKey
+    ];
+    $targets["freesound"] = "https://freesound.org/apiv2/search/?" . http_build_query($fsParams);
+}
+
 $responses = fetch_urls_parallel(array_values($targets));
 $keys = array_keys($targets);
 $bodyBySource = [];
@@ -76,7 +91,25 @@ if ($s101[1] >= 200 && $s101[1] < 300 && $s101[0]) {
 $sources["101soundboards"] = ["ok" => $s101Ok, "count" => count($s101List), "total_pages" => null];
 $lists[] = $s101List;
 
-if (!$miOk && !$msbOk && !$s101Ok) {
+// Freesound (official JSON API, skipped without key)
+$fsList = [];
+$fsTotal = null;
+$fsHasNext = null;
+$fsOk = false;
+if ($fsKey) {
+    $fs = $bodyBySource["freesound"];
+    $fsOk = ($fs[1] >= 200 && $fs[1] < 300);
+    if ($fsOk && $fs[0]) {
+        $fsData = json_decode($fs[0], true);
+        if (is_array($fsData)) list($fsList, $fsTotal, $fsHasNext) = parse_freesound_api($fsData, $fsPageSize);
+    }
+    $sources["freesound"] = ["ok" => $fsOk, "count" => count($fsList), "total_pages" => $fsTotal];
+    $lists[] = $fsList;
+} else {
+    $sources["freesound"] = ["ok" => false, "count" => 0, "total_pages" => null, "reason" => "missing FREESOUND_API_KEY"];
+}
+
+if (!$miOk && !$msbOk && !$s101Ok && !$fsOk) {
     output_error("All upstream sources failed for this query. Please retry later.", "502");
 }
 
@@ -84,8 +117,8 @@ $sounds = round_robin_merge($lists);
 $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
 
 $has_next = null;
-if ($msbHasNext === true) $has_next = true;
-foreach (["myinstants" => $miTotal, "memesoundboard" => $msbTotal] as $src => $tp) {
+if ($msbHasNext === true || $fsHasNext === true) $has_next = true;
+foreach (["myinstants" => $miTotal, "memesoundboard" => $msbTotal, "freesound" => $fsTotal] as $src => $tp) {
     if ($tp !== null && $page < $tp) { $has_next = true; break; }
 }
 if ($has_next === null && count($s101List) >= 100) $has_next = true;

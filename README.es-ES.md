@@ -86,11 +86,14 @@ URL Base: https://myinstants-api.vercel.app
 | `GET /category`  | Sonidos por categoría | `category`, `q`, `page` |
 | `GET /memesoundboard` | Sonidos de MemeSoundboard.io | `q`, `page` |
 | `GET /101soundboards` | Sonidos de 101Soundboards.com | `q`, `page` |
-| `GET /search_all` | Búsqueda combinada en las 3 fuentes | `q`, `page` |
+| `GET /freesound` | Sonidos CC de Freesound.org (requiere API key) | `q`, `page` |
+| `GET /search_all` | Búsqueda combinada en todas las fuentes | `q`, `page` |
 
-_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/search_all`) admiten paginación con `?page=N` (por defecto `1`) y filtrado por duración con `?with_duration=1&min_duration=2&max_duration=6`._
+_Todos los endpoints de lista (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/freesound`, `/search_all`) admiten paginación con `?page=N` (por defecto `1`) y filtrado por duración con `?with_duration=1&min_duration=2&max_duration=6`._
 
-_Cada elemento lleva un campo `source` (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` intercala las tres fuentes (round-robin) e informa el estado por fuente en `sources`. Los elementos de 101Soundboards incluyen `thumbnail` y `duration` gratuita (sin análisis necesario)._
+_Cada elemento lleva un campo `source` (`myinstants`, `memesoundboard`, `101soundboards`, `freesound`). `/search_all` intercala todas las fuentes configuradas (round-robin) e informa el estado por fuente en `sources`. Los elementos de 101Soundboards/Freesound incluyen `thumbnail` y `duration` gratuita (sin análisis necesario); los de Freesound además traen su `license` (CC0/BY/BY-NC — atribuye a los autores y excluye NonCommercial en apps comerciales)._
+
+> **Configurar Freesound:** clave gratuita sin espera — regístrate en https://freesound.org, solicítala en https://freesound.org/apiv2/apply y define `FREESOUND_API_KEY` (Vercel Dashboard → Settings → Environment Variables). Sin ella, `/freesound` devuelve `503` y `/search_all` omite esa fuente. El filtrado por duración se traduce a la consulta propia `duration:[min TO max]`, con `?page`/`page_size=30` y totales en `count`._
 
 ### Parámetros de Solicitud
 
@@ -261,6 +264,7 @@ GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_du
 GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
 GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
 GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
+GET https://myinstants-api.vercel.app/freesound?q=airhorn&min_duration=2&max_duration=6
 ```
 
 ## 🌱 Contribuir
