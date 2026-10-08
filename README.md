@@ -51,7 +51,7 @@
     cd myinstants
     ```
 
-2. Download and include `simple_html_dom.php` in the project directory.
+2. Download and place `simple_html_dom.php` in the `lib/` directory.
 
 3. **Local Development (No Apache/Nginx required)**:
    You can run the API locally using PHP's built-in web server. This project includes a `router.php` file that perfectly simulates Vercel's serverless routing environment, allowing you to access endpoints without the `.php` extension.

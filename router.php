@@ -3,19 +3,22 @@
 
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 
-// Route: ^/$ -> /api/index.php
 if ($path === '/') {
     require __DIR__ . '/api/index.php';
     return true;
 }
 
-$path = rtrim($path, '/');
+$endpoint = trim(rtrim($path, '/'), '/');
 
-// Route: ^/(.*)$ -> /api/$1.php
-$apiFile = __DIR__ . '/api' . $path . '.php';
+$listEndpoints = ['101soundboards', 'best', 'category', 'favorites', 'freesound', 'memesoundboard', 'recent', 'search', 'search_all', 'trending', 'uploaded'];
 
-if (file_exists($apiFile)) {
-    require $apiFile;
+if ($endpoint === 'detail') {
+    require __DIR__ . '/api/detail.php';
+    return true;
+}
+
+if (in_array($endpoint, $listEndpoints, true)) {
+    require __DIR__ . '/api/list.php';
     return true;
 }
 

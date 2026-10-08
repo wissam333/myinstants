@@ -1,5 +1,5 @@
 <?php
-require_once "simple_html_dom.php";
+require_once __DIR__ . "/simple_html_dom.php";
 
 // Never leak warnings/deprecations into JSON responses.
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
@@ -433,7 +433,7 @@ function apply_duration_filter($sounds, $with_duration, $min_duration, $max_dura
     return $out;
 }
 
-// --- Multi-source helpers (Voicy / MemeSoundboard / 101Soundboards) ---
+// --- Multi-source helpers (MemeSoundboard / 101Soundboards / Freesound) ---
 
 function iso8601_to_seconds($s) {
     if ($s === null || $s === '') return null;
