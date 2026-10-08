@@ -47,5 +47,5 @@ if ($with_duration) {
     $data["duration"] = $durations[$mp3] ?? null;
 }
 
-output_json($data);
+output_json($data, "200", ["source" => fetch_source()]);
 ?>

@@ -5,7 +5,16 @@ require_once "simple_html_dom.php";
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 ini_set('display_errors', '0');
 
-function fetch_html($url, $retry = true) {
+function fetch_source() {
+    global $fetch_source;
+    return $fetch_source ?? 'live';
+}
+
+function wayback_url($url) {
+    return 'https://web.archive.org/web/' . date('Y') . 'id_/' . $url;
+}
+
+function curl_fetch($url, $timeout = 15) {
     static $cookieFile = null;
     if ($cookieFile === null) $cookieFile = sys_get_temp_dir() . '/myinstants_cookies.txt';
     $ch = curl_init();
@@ -23,18 +32,36 @@ function fetch_html($url, $retry = true) {
     curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
     curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    $htmlString = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+    $body = curl_exec($ch);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $error = curl_error($ch);
     // Note: curl_close() intentionally omitted — deprecated since PHP 8.5.
+    return [$body, $code, $error];
+}
+
+function fetch_html($url, $retry = true) {
+    global $fetch_source;
+    $fetch_source = 'live';
+    list($htmlString, $httpCode, $error) = curl_fetch($url);
     if (($httpCode == 403 || $httpCode == 429) && $retry) {
         sleep(1);
         return fetch_html($url, false);
     }
+    if ($httpCode == 403 || $httpCode == 429 || !$htmlString) {
+        // Fallback: latest Wayback Machine snapshot (raw markup via id_ suffix).
+        list($aBody, $aCode) = curl_fetch(wayback_url($url), 12);
+        if ($aCode >= 200 && $aCode < 300 && $aBody) {
+            $aHtml = str_get_html($aBody);
+            if ($aHtml && (count($aHtml->find('div.instant')) > 0 || $aHtml->find('h1#instant-page-title', 0))) {
+                $fetch_source = 'archive';
+                return $aHtml;
+            }
+        }
+    }
     if ($httpCode >= 400 || !$htmlString) {
         if ($httpCode == 403 || $httpCode == 429) {
-            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection). Please retry later.", "502");
+            output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no archive snapshot is available. Please retry later.", "502");
         }
         output_error("Fetch failed: HTTP $httpCode, cURL Error: $error");
     }
@@ -76,7 +103,9 @@ function output_error($msg, $status = "404") {
 function output_json($data, $status = "200", $meta = []) {
     http_response_code((int)$status);
     header("Access-Control-Allow-Origin: *");
-    header("Cache-Control: s-maxage=3600, stale-while-revalidate");
+    // Archive snapshots are immutable: cache them much longer.
+    $maxAge = (isset($meta["source"]) && $meta["source"] === "archive") ? 86400 : 3600;
+    header("Cache-Control: s-maxage=$maxAge, stale-while-revalidate");
     $response = array_merge(["status" => $status, "author" => "wissam333"], $meta, ["data" => $data]);
     echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     exit;
@@ -262,10 +291,10 @@ function mp3_duration_from_data($data) {
     return $duration;
 }
 
-function fetch_mp3_durations($urls) {
-    $map = [];
+function fetch_urls_parallel($urls) {
+    $out = [];
     $urls = array_values(array_unique($urls));
-    if (empty($urls)) return $map;
+    if (empty($urls)) return $out;
     $mh = curl_multi_init();
     $handles = [];
     foreach ($urls as $i => $url) {
@@ -289,15 +318,41 @@ function fetch_mp3_durations($urls) {
         $ch = $handles[$i];
         $data = curl_multi_getcontent($ch);
         $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $duration = null;
-        if ($code >= 200 && $code < 300 && $data) {
-            $d = mp3_duration_from_data($data);
-            if ($d !== null) $duration = round($d, 2);
-        }
-        $map[$url] = $duration;
+        $out[$url] = [($code >= 200 && $code < 300) ? $data : null, $code];
         curl_multi_remove_handle($mh, $ch);
         // Note: curl_close() / curl_multi_close() intentionally omitted —
         // deprecated since PHP 8.5 (no-ops since PHP 8.0, handles auto-freed).
+    }
+    return $out;
+}
+
+function mp3_duration_of($data) {
+    if (!$data) return null;
+    $d = mp3_duration_from_data($data);
+    return ($d !== null) ? round($d, 2) : null;
+}
+
+function fetch_mp3_durations($urls) {
+    $map = [];
+    $responses = fetch_urls_parallel($urls);
+    $needArchive = [];
+    foreach ($responses as $url => $r) {
+        list($data) = $r;
+        $duration = mp3_duration_of($data);
+        $map[$url] = $duration;
+        if ($duration === null) $needArchive[] = $url;
+    }
+    // Second pass: undetermined files may still be measurable via archived copy.
+    if (!empty($needArchive)) {
+        $archived = [];
+        foreach ($needArchive as $u) $archived[] = wayback_url($u);
+        $aResponses = fetch_urls_parallel($archived);
+        $i = 0;
+        foreach ($needArchive as $u) {
+            $r = $aResponses[$archived[$i++]];
+            $d = mp3_duration_of($r[0]);
+            if ($d !== null) $map[$u] = $d;
+        }
     }
     return $map;
 }

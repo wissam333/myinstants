@@ -22,7 +22,7 @@ $sounds = parse_sounds($html);
 $total_pages = parse_total_pages($html);
 $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
 $meta = array_merge(
-    ["category" => $category, "region" => ($region !== "" ? $region : null)],
+    ["source" => fetch_source(), "category" => $category, "region" => ($region !== "" ? $region : null)],
     pagination_meta($page, $total_pages, count($sounds))
 );
 output_json($sounds, "200", $meta);
