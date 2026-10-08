@@ -11,5 +11,5 @@ if (!$html) output_error("Page not found");
 $sounds = parse_sounds($html);
 $total_pages = parse_total_pages($html);
 $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
-output_json($sounds, "200", pagination_meta($page, $total_pages, count($sounds)));
+output_json($sounds, "200", array_merge(["source" => fetch_source()], pagination_meta($page, $total_pages, count($sounds))));
 ?>

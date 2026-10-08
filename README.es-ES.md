@@ -128,6 +128,8 @@ Una respuesta exitosa típica (HTTP 200) devolverá un objeto JSON como este:
 
 _`page` / `count` / `total_pages` / `has_next` los devuelven todos los endpoints de lista (`total_pages` se extrae del título original `Page X of Y`, `null` si no se detecta). `duration` (segundos) solo aparece con `with_duration=1` o `min_duration` / `max_duration`. `/category` además devuelve `category` y `region` (`null` en el listado global)._
 
+_`source` es `"live"` normalmente, o `"archive"` cuando `myinstants.com` bloqueó la petición y los datos vienen de la última instantánea de Wayback Machine (pueden ser más antiguos; los enlaces `mp3` siguen apuntando al sitio en vivo, y estas respuestas se cachean 24h). Si ninguna fuente funciona, la API devuelve HTTP `502` — reintenta más tarde._
+
 _Nota: Para el endpoint `/detail`, el objeto `data` contendrá campos adicionales como `description`, `tags`, `favorites`, `views` y `uploader` (más `duration` con `?with_duration=1`)._
 
 ## 💥 Manejo de Errores
