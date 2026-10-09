@@ -10,7 +10,7 @@ if ($path === '/') {
 
 $endpoint = trim(rtrim($path, '/'), '/');
 
-$listEndpoints = ['101soundboards', 'best', 'category', 'favorites', 'freesound', 'memesoundboard', 'recent', 'search', 'search_all', 'trending', 'uploaded'];
+$listEndpoints = ['101soundboards', 'best', 'category', 'favorites', 'memesoundboard', 'recent', 'search', 'search_all', 'trending', 'uploaded'];
 
 if ($endpoint === 'detail') {
     require __DIR__ . '/api/detail.php';

@@ -1,0 +1,13 @@
+# Local environment (secrets: API keys, proxy templates)
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel
+
+# Dependencies / logs / OS
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
