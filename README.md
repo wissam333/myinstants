@@ -82,11 +82,16 @@
 | `GET /category`  | Sounds by category       | `category`, `q`, `page` |
 | `GET /memesoundboard` | Sounds from MemeSoundboard.io | `q`, `page` |
 | `GET /101soundboards` | Sounds from 101Soundboards.com | `q`, `page` |
+| `GET /101categories` | 101Soundboards category (tag) list | _none_ |
+| `GET /101category` | Boards inside a 101Soundboards category | `tag`, `page` |
+| `GET /101board` | Sounds inside a 101Soundboards board | `board`, `page` |
 | `GET /search_all` | Merged search across all sources | `q`, `page` |
 
-_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
+_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/101category`, `/101board`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
 
 _Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` interleaves all sources (round-robin) and reports per-source status in `sources`. 101Soundboards items include `thumbnail` and a free `duration` (no probing needed)._
+
+_101Soundboards is two levels deep: a category (tag) page lists **boards**, and each board holds the actual sounds. Use `/101categories` to list the available tags, `/101category?tag=games` to page through boards, then `/101board?board=36000-halo-ringtones` to get the sounds of one board._
 
 ### Request Parameters
 
@@ -97,6 +102,8 @@ _Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundbo
 |      `id`      | Sound's Unique ID                                        |
 |     `page`     | Page number (>= 1, default `1`). Example: `?page=4`      |
 |   `category`   | Category name (required for `/category`, case-insensitive). One of: `anime & manga`, `games`, `memes`, `movies`, `music`, `politics`, `pranks`, `reactions`, `sound effects`, `sports`, `television`, `tiktok trends`, `viral`, `whatsapp audios` |
+|     `tag`      | 101Soundboards category tag (required for `/101category`, slug or name). One of: `anime-comics-cartoons`, `celebrities`, `comedy`, `games`, `memes-funny`, `movies`, `music-musicians`, `nature`, `other`, `politics`, `sound-fx`, `sports`, `streamers-twitch-podcasts`, `tv`, `united-kingdom`, `united-states` |
+|    `board`     | 101Soundboards board slug, `boards/{id-slug}`, or full URL (required for `/101board`). Example: `?board=36000-halo-ringtones` |
 | `with_duration`| `1` to include MP3 `duration` (seconds) per sound        |
 | `min_duration` | Only keep sounds >= N seconds (implies `with_duration`)  |
 | `max_duration` | Only keep sounds <= N seconds (implies `with_duration`)  |
@@ -270,6 +277,14 @@ GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_du
 GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
 GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
 GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
+```
+
+### Example 12: Browse 101Soundboards by Category (tags -> boards -> sounds)
+
+```http
+GET https://myinstants-api.vercel.app/101categories
+GET https://myinstants-api.vercel.app/101category?tag=games&page=1
+GET https://myinstants-api.vercel.app/101board?board=36000-halo-ringtones
 ```
 
 ## 🌱 Contributing

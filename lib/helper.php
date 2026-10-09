@@ -77,31 +77,43 @@ function valid_scrape_html($body) {
     return null;
 }
 
-function fetch_html($url, $retry = true) {
+function is_challenge_page($body) {
+    if (!$body) return true;
+    if (stripos($body, 'Just a moment') !== false) return true;
+    if (stripos($body, 'cf_chl_opt') !== false) return true;
+    if (stripos($body, '_cf_chl_') !== false) return true;
+    if (stripos($body, 'challenges.cloudflare.com') !== false) return true;
+    return false;
+}
+
+function fetch_html($url, $retry = true, $throw = true) {
     global $fetch_source;
     $fetch_source = 'live';
     list($htmlString, $httpCode, $error) = curl_fetch($url);
-    if (($httpCode == 403 || $httpCode == 429) && $retry) {
+
+    // A Cloudflare managed challenge can arrive as HTTP 200 OR 403, depending
+    // on the path/edge — treat both as "blocked".
+    $blocked = ($httpCode == 403 || $httpCode == 429 || !$htmlString || is_challenge_page($htmlString));
+    if ($blocked && $retry) {
         sleep(1);
-        return fetch_html($url, false);
+        return fetch_html($url, false, $throw);
     }
-    if ($httpCode == 403 || $httpCode == 429 || !$htmlString) {
-    // Escape hatch: paid/free-tier scraper proxies (real browsers that pass
-    // Cloudflare). Set UPSTREAM_PROXY_TEMPLATES env var (comma-separated,
-    // tried in order), e.g.:
-    //   https://api.scraperapi.com?api_key=KEY&url={url}
-    //   https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}
-    //   https://api.zenrows.com/v1/?apikey=KEY&url={url}
-    foreach (proxy_templates() as $tpl) {
-        list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 15);
-        if ($pCode >= 200 && $pCode < 300) {
-            $pHtml = valid_scrape_html($pBody);
-            if ($pHtml) {
-                $fetch_source = 'proxy';
-                return $pHtml;
+    if ($blocked) {
+        // Escape hatch: paid/free-tier scraper proxies that render with real
+        // browsers and solve the challenge. Set UPSTREAM_PROXY_TEMPLATES
+        // (comma-separated, tried in order), e.g.:
+        //   https://api.zenrows.com/v1/?apikey=K&url={url}&js_render=true&antibot=true
+        //   https://app.scrapingbee.com/api/v1/?api_key=K&url={url}&render_js=true&stealth_proxy=1
+        foreach (proxy_templates() as $tpl) {
+            list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 15);
+            if ($pCode >= 200 && $pCode < 300 && !is_challenge_page($pBody)) {
+                $pHtml = valid_scrape_html($pBody);
+                if ($pHtml) {
+                    $fetch_source = 'proxy';
+                    return $pHtml;
+                }
             }
         }
-    }
         // Fallback: latest Wayback Machine snapshot (raw markup via id_ suffix).
         list($aBody, $aCode) = curl_fetch(wayback_url($url), 12);
         if ($aCode >= 200 && $aCode < 300) {
@@ -112,8 +124,9 @@ function fetch_html($url, $retry = true) {
             }
         }
     }
-    if ($httpCode >= 400 || !$htmlString) {
-        if ($httpCode == 403 || $httpCode == 429) {
+    if ($httpCode >= 400 || !$htmlString || is_challenge_page($htmlString)) {
+        if (!$throw) return null;
+        if ($httpCode == 403 || $httpCode == 429 || is_challenge_page($htmlString)) {
             output_error("Upstream myinstants.com refused this request (HTTP $httpCode, anti-bot protection) and no fallback source worked. Retry later or set UPSTREAM_PROXY_TEMPLATES.", "502");
         }
         output_error("Fetch failed: HTTP $httpCode, cURL Error: $error");
@@ -515,6 +528,131 @@ function parse_101_sounds($html) {
         } else {
             collect_101_items($data, $sounds, $seen);
         }
+    }
+    return $sounds;
+}
+
+// --- 101Soundboards categories: tags -> boards -> sounds ---
+
+function valid_101_tags() {
+    return [
+        "anime-comics-cartoons" => "Anime, Comics & Cartoons",
+        "celebrities" => "Celebrities",
+        "comedy" => "Comedy",
+        "games" => "Games",
+        "memes-funny" => "Memes & Funny",
+        "movies" => "Movies",
+        "music-musicians" => "Music & Musicians",
+        "nature" => "Nature",
+        "other" => "Other",
+        "politics" => "Politics",
+        "sound-fx" => "Sound FX",
+        "sports" => "Sports",
+        "streamers-twitch-podcasts" => "Streamers, Twitch & Podcasts",
+        "tv" => "TV",
+        "united-kingdom" => "United Kingdom",
+        "united-states" => "United States"
+    ];
+}
+
+function slugify_101($s) {
+    $s = strtolower(trim((string)$s));
+    $s = preg_replace('/[^a-z0-9]+/', '-', $s);
+    return trim($s, '-');
+}
+
+function resolve_101_tag($input) {
+    $needle = slugify_101($input);
+    foreach (valid_101_tags() as $slug => $name) {
+        if ($needle === $slug || $needle === slugify_101($name)) return $slug;
+    }
+    return null;
+}
+
+function parse_101_boards($html) {
+    $boards = [];
+    $web = "https://www.101soundboards.com";
+    if (!$html) return $boards;
+    foreach ($html->find('a') as $a) {
+        $card = $a->find('.board_index_container', 0);
+        if (!$card) continue;
+        $href = $a->href;
+        if (!$href || (strpos($href, '/boards/') === false && strpos($href, '/tts/') === false)) continue;
+        $isTts = (strpos($href, '/tts/') !== false);
+        $titleEl = $card->find('.board_title', 0);
+        $title = $titleEl ? trim(html_entity_decode($titleEl->plaintext, ENT_QUOTES | ENT_HTML5)) : '';
+        $thumb = null;
+        $img = $card->find('img', 0);
+        if ($img) $thumb = $img->src ?: $img->getAttribute('data-src');
+        if (!$thumb) {
+            $src = $card->find('source[type=image/webp]', 0);
+            if ($src) $thumb = $src->getAttribute('data-srcset');
+        }
+        if ($thumb && strpos($thumb, '//') === 0) $thumb = 'https:' . $thumb;
+        elseif ($thumb && strpos($thumb, 'http') !== 0) $thumb = $web . '/' . ltrim($thumb, '/');
+        $url = (strpos($href, 'http') === 0) ? $href : $web . $href;
+        $slug = preg_replace('#^(boards|tts)/#', '', trim((string)parse_url($url, PHP_URL_PATH), '/'));
+        $boards[] = [
+            "id" => $slug,
+            "title" => $title,
+            "url" => $url,
+            "thumbnail" => $thumb,
+            "type" => $isTts ? 'tts' : 'board',
+            "source" => "101soundboards"
+        ];
+    }
+    return $boards;
+}
+
+function parse_101_last_page($html) {
+    $last = null;
+    if (!$html) return null;
+    foreach ($html->find('ul.pagination a.page-link') as $a) {
+        if ($a->href && preg_match('/[?&]page=(\d+)/', $a->href, $m)) {
+            $n = (int)$m[1];
+            if ($last === null || $n > $last) $last = $n;
+        }
+    }
+    return $last;
+}
+
+function parse_101_board_sounds($html) {
+    $sounds = [];
+    $seen = [];
+    $web = "https://www.101soundboards.com";
+    if (!$html) return $sounds;
+    foreach ($html->find('span.soundPlayer') as $player) {
+        $raw = $player->getAttribute('data-sound');
+        if (!$raw) continue;
+        $data = json_decode(html_entity_decode($raw, ENT_QUOTES), true);
+        if (!is_array($data)) continue;
+        $link = $data['link'] ?? null;
+        if (!$link) continue;
+        $slug = trim(str_replace('/sounds/', '', $link), '/');
+        if ($slug === '' || isset($seen[$slug])) continue;
+        $seen[$slug] = true;
+        $mp3 = null;
+        $node = $player;
+        for ($i = 0; $i < 4 && $node; $i++) {
+            $audio = $node->find('audio', 0);
+            if ($audio) { $mp3 = $audio->src ?: $audio->getAttribute('data-src'); break; }
+            $node = $node->parent();
+        }
+        if (!$mp3) $mp3 = $data['download_url'] ?? null;
+        if ($mp3) {
+            if (strpos($mp3, '//') === 0) $mp3 = 'https:' . $mp3;
+            elseif (strpos($mp3, 'http') !== 0) $mp3 = $web . '/' . ltrim($mp3, '/');
+        }
+        $title = $data['sound_transcript'] ?? $data['sound_title'] ?? $slug;
+        $sounds[] = [
+            "id" => $slug,
+            "title" => html_entity_decode($title, ENT_QUOTES | ENT_HTML5),
+            "url" => $web . '/sounds/' . $slug,
+            "mp3" => $mp3,
+            "thumbnail" => null,
+            "duration" => null,
+            "source" => "101soundboards"
+        ];
     }
     return $sounds;
 }

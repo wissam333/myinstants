@@ -209,29 +209,18 @@ switch ($endpoint) {
         $mi = $bodyBySource["myinstants"];
         $miList = [];
         $miTotal = null;
-        $miOk = ($mi[1] >= 200 && $mi[1] < 300);
-        if ($mi[1] >= 200 && $mi[1] < 300 && $mi[0]) {
-            $miHtml = str_get_html($mi[0]);
-            if ($miHtml && count($miHtml->find('div.instant')) > 0) {
-                $miList = parse_sounds($miHtml);
-                foreach ($miList as &$s) $s["source"] = "myinstants";
-                unset($s);
-                $miTotal = parse_total_pages($miHtml);
-            }
+        $miHtml = ($mi[1] >= 200 && $mi[1] < 300 && $mi[0]) ? valid_scrape_html($mi[0]) : null;
+        if (!$miHtml) {
+            // Parallel fetch was blocked/stripped: fall back through the shared
+            // fetcher (retry -> proxy -> Wayback) without aborting the merge.
+            $miHtml = fetch_html($targets["myinstants"], true, false);
         }
-        if ($miList === [] && ($mi[1] == 403 || $mi[1] == 429)) {
-            // MyInstants blocked: one Wayback attempt for its share.
-            list($aBody, $aCode) = curl_fetch(wayback_url($targets["myinstants"]), 12);
-            $miOk = ($aCode >= 200 && $aCode < 300);
-            if ($miOk && $aBody) {
-                $aHtml = str_get_html($aBody);
-                if ($aHtml && count($aHtml->find('div.instant')) > 0) {
-                    $miList = parse_sounds($aHtml);
-                    foreach ($miList as &$s) $s["source"] = "myinstants";
-                    unset($s);
-                    $miTotal = parse_total_pages($aHtml);
-                }
-            }
+        $miOk = ($miHtml !== null);
+        if ($miHtml) {
+            $miList = parse_sounds($miHtml);
+            foreach ($miList as &$s) $s["source"] = "myinstants";
+            unset($s);
+            $miTotal = parse_total_pages($miHtml);
         }
         $sources["myinstants"] = ["ok" => $miOk, "count" => count($miList), "total_pages" => $miTotal];
         $lists[] = $miList;
@@ -281,6 +270,84 @@ switch ($endpoint) {
             "total_pages" => null,
             "has_next" => $has_next,
             "sources" => $sources
+        ];
+        output_json($sounds, "200", $meta);
+        break;
+    }
+
+    case "101categories": {
+        $data = [];
+        foreach (valid_101_tags() as $slug => $name) {
+            $data[] = [
+                "tag" => $slug,
+                "name" => $name,
+                "url" => "https://www.101soundboards.com/tags/" . $slug
+            ];
+        }
+        output_json($data, "200", ["source" => "101soundboards", "count" => count($data)]);
+        break;
+    }
+
+    case "101category": {
+        $raw_tag = $_GET['tag'] ?? "";
+        if ($raw_tag === "") {
+            output_error("Query parameter 'tag' is required, example: ?tag=games. Valid tags: " . implode(", ", array_keys(valid_101_tags())), "400");
+        }
+        $tag = resolve_101_tag($raw_tag);
+        if ($tag === null) {
+            output_error("Invalid tag '" . $raw_tag . "'. Valid tags: " . implode(", ", array_keys(valid_101_tags())), "400");
+        }
+        $page = get_page_param();
+        $url = "https://www.101soundboards.com/tags/" . $tag . "?sort=0&page=" . $page;
+        $html = fetch_html($url);
+        if (!$html) {
+            output_error("Page not found");
+        }
+        $boards = parse_101_boards($html);
+        $last = parse_101_last_page($html);
+        $has_next = ($last !== null) ? ($page < $last) : (count($boards) > 0);
+        $meta = [
+            "source" => fetch_source(),
+            "tag" => $tag,
+            "name" => valid_101_tags()[$tag],
+            "kind" => "boards",
+            "page" => $page,
+            "count" => count($boards),
+            "total_pages" => $last,
+            "has_next" => $has_next
+        ];
+        output_json($boards, "200", $meta);
+        break;
+    }
+
+    case "101board": {
+        $board = $_GET['board'] ?? ($_GET['id'] ?? "");
+        if ($board === "") {
+            output_error("Query parameter 'board' is required, example: ?board=36000-halo-ringtones", "400");
+        }
+        $path = preg_match('#^https?://#i', $board) ? (string)parse_url($board, PHP_URL_PATH) : $board;
+        $isTts = (strpos($path, '/tts/') === 0 || strpos($path, 'tts/') === 0);
+        $slug = preg_replace('#^(boards|tts)/#', '', trim($path, '/'));
+        if ($slug === "") {
+            output_error("Invalid board parameter", "400");
+        }
+        $page = get_page_param();
+        $url = "https://www.101soundboards.com/" . ($isTts ? "tts" : "boards") . "/" . $slug . ($page > 1 ? "?page=" . $page : "");
+        $html = fetch_html($url);
+        if (!$html) {
+            output_error("Page not found");
+        }
+        $sounds = parse_101_board_sounds($html);
+        $last = parse_101_last_page($html);
+        $has_next = ($last !== null) ? ($page < $last) : false;
+        $meta = [
+            "source" => fetch_source(),
+            "board" => $slug,
+            "page" => $page,
+            "count" => count($sounds),
+            "total_pages" => $last,
+            "has_next" => $has_next,
+            "note" => "mp3 links may require the sound page for playback; use the url field as a stable reference"
         ];
         output_json($sounds, "200", $meta);
         break;
