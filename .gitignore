@@ -11,3 +11,9 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+
+# Editor snapshot backups (may contain .env copies)
+.history/
+.idea/
+*.suo
+
