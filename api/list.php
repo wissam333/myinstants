@@ -337,7 +337,7 @@ switch ($endpoint) {
         if (!$html) {
             output_error("Page not found");
         }
-        $sounds = parse_101_board_sounds($html);
+        $sounds = parse_101_sounds($html);
         $last = parse_101_last_page($html);
         $has_next = ($last !== null) ? ($page < $last) : false;
         $meta = [
@@ -346,8 +346,7 @@ switch ($endpoint) {
             "page" => $page,
             "count" => count($sounds),
             "total_pages" => $last,
-            "has_next" => $has_next,
-            "note" => "mp3 links may require the sound page for playback; use the url field as a stable reference"
+            "has_next" => $has_next
         ];
         output_json($sounds, "200", $meta);
         break;

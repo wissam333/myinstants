@@ -571,32 +571,43 @@ function resolve_101_tag($input) {
 
 function parse_101_boards($html) {
     $boards = [];
+    $seen = [];
     $web = "https://www.101soundboards.com";
     if (!$html) return $boards;
+    // Current markup: the card is <a class="board_index_container"> itself.
+    // Older markup: <a href><div class="board_index_container">.</div></a>
     foreach ($html->find('a') as $a) {
-        $card = $a->find('.board_index_container', 0);
-        if (!$card) continue;
-        $href = $a->href;
-        if (!$href || (strpos($href, '/boards/') === false && strpos($href, '/tts/') === false)) continue;
+        $container = null;
+        if ($a->class && strpos($a->class, 'board_index_container') !== false) $container = $a;
+        else $container = $a->find('div.board_index_container', 0);
+        if ($container === null) continue;
+        $href = (string)$a->href;
+        if ($href === '' || (strpos($href, '/boards/') === false && strpos($href, '/tts/') === false)) continue;
+        if (isset($seen[$href])) continue;
+        $seen[$href] = true;
         $isTts = (strpos($href, '/tts/') !== false);
-        $titleEl = $card->find('.board_title', 0);
+        $titleEl = $container->find('.board_index_title', 0);
+        if (!$titleEl) $titleEl = $container->find('.board_title', 0);
         $title = $titleEl ? trim(html_entity_decode($titleEl->plaintext, ENT_QUOTES | ENT_HTML5)) : '';
         $thumb = null;
-        $img = $card->find('img', 0);
+        $img = $container->find('img', 0);
         if ($img) $thumb = $img->src ?: $img->getAttribute('data-src');
         if (!$thumb) {
-            $src = $card->find('source[type=image/webp]', 0);
-            if ($src) $thumb = $src->getAttribute('data-srcset');
+            $pic = $container->find('source[type=image/webp]', 0);
+            if ($pic) $thumb = $pic->getAttribute('srcset');
         }
-        if ($thumb && strpos($thumb, '//') === 0) $thumb = 'https:' . $thumb;
-        elseif ($thumb && strpos($thumb, 'http') !== 0) $thumb = $web . '/' . ltrim($thumb, '/');
+        if ($thumb) {
+            if (strpos($thumb, '//') === 0) $thumb = 'https:' . $thumb;
+            elseif (strpos($thumb, '/') === 0) $thumb = $web . $thumb;
+            elseif (strpos($thumb, 'http') !== 0) $thumb = $web . '/' . ltrim($thumb, '/');
+        }
         $url = (strpos($href, 'http') === 0) ? $href : $web . $href;
         $slug = preg_replace('#^(boards|tts)/#', '', trim((string)parse_url($url, PHP_URL_PATH), '/'));
         $boards[] = [
             "id" => $slug,
             "title" => $title,
             "url" => $url,
-            "thumbnail" => $thumb,
+            "thumbnail" => $thumb ?: null,
             "type" => $isTts ? 'tts' : 'board',
             "source" => "101soundboards"
         ];
@@ -614,47 +625,6 @@ function parse_101_last_page($html) {
         }
     }
     return $last;
-}
-
-function parse_101_board_sounds($html) {
-    $sounds = [];
-    $seen = [];
-    $web = "https://www.101soundboards.com";
-    if (!$html) return $sounds;
-    foreach ($html->find('span.soundPlayer') as $player) {
-        $raw = $player->getAttribute('data-sound');
-        if (!$raw) continue;
-        $data = json_decode(html_entity_decode($raw, ENT_QUOTES), true);
-        if (!is_array($data)) continue;
-        $link = $data['link'] ?? null;
-        if (!$link) continue;
-        $slug = trim(str_replace('/sounds/', '', $link), '/');
-        if ($slug === '' || isset($seen[$slug])) continue;
-        $seen[$slug] = true;
-        $mp3 = null;
-        $node = $player;
-        for ($i = 0; $i < 4 && $node; $i++) {
-            $audio = $node->find('audio', 0);
-            if ($audio) { $mp3 = $audio->src ?: $audio->getAttribute('data-src'); break; }
-            $node = $node->parent();
-        }
-        if (!$mp3) $mp3 = $data['download_url'] ?? null;
-        if ($mp3) {
-            if (strpos($mp3, '//') === 0) $mp3 = 'https:' . $mp3;
-            elseif (strpos($mp3, 'http') !== 0) $mp3 = $web . '/' . ltrim($mp3, '/');
-        }
-        $title = $data['sound_transcript'] ?? $data['sound_title'] ?? $slug;
-        $sounds[] = [
-            "id" => $slug,
-            "title" => html_entity_decode($title, ENT_QUOTES | ENT_HTML5),
-            "url" => $web . '/sounds/' . $slug,
-            "mp3" => $mp3,
-            "thumbnail" => null,
-            "duration" => null,
-            "source" => "101soundboards"
-        ];
-    }
-    return $sounds;
 }
 
 function parse_msb_api($data, $query, $page = 1, $page_size = 35) {
