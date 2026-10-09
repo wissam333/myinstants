@@ -82,14 +82,11 @@
 | `GET /category`  | Sounds by category       | `category`, `q`, `page` |
 | `GET /memesoundboard` | Sounds from MemeSoundboard.io | `q`, `page` |
 | `GET /101soundboards` | Sounds from 101Soundboards.com | `q`, `page` |
-| `GET /freesound` | CC sounds from Freesound.org (needs API key) | `q`, `page` |
 | `GET /search_all` | Merged search across all sources | `q`, `page` |
 
-_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/freesound`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
+_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
 
-_Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`, `freesound`). `/search_all` interleaves all configured sources (round-robin) and reports per-source status in `sources`. 101Soundboards/Freesound items include `thumbnail` and a free `duration` (no probing needed); Freesound items also carry their `license` (CC0/BY/BY-NC — attribute authors and filter out NonCommercial for commercial apps)._
-
-> **Freesound setup:** free key, no approval wait — sign up at https://freesound.org, apply at https://freesound.org/apiv2/apply, then set `FREESOUND_API_KEY` (Vercel Dashboard → Settings → Environment Variables). Without it, `/freesound` returns `503` and `/search_all` skips that source. Server-side duration filtering maps to Freesound's own `duration:[min TO max]` query, and responses honor `?page`/`page_size=30` with `count` totals.
+_Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` interleaves all sources (round-robin) and reports per-source status in `sources`. 101Soundboards items include `thumbnail` and a free `duration` (no probing needed)._
 
 ### Request Parameters
 
@@ -155,7 +152,7 @@ _`source` is `"live"` normally, `"proxy"` when served via your scraper proxy, or
 >
 > **Credits last longer than they look:** the proxy is only consulted *after* a direct fetch fails with 403/429 (live is always tried first), and every proxied page is edge-cached (see month-long caching below), so one credit can serve many requests. Rough ZenRows math: an antibot request costs ~25 credits → ~80 protected fetches per free signup, stretched much further by caching. Rotate/re-sign-up if you burn through them.
 >
-> Without any proxy configured, the API automatically falls back to Wayback Machine snapshots when blocked (`source: "archive"`, data may be slightly stale), and the `/memesoundboard`, `/101soundboards`, and `/freesound` sources are unaffected by myinstants' Cloudflare entirely.
+> Without any proxy configured, the API automatically falls back to Wayback Machine snapshots when blocked (`source: "archive"`, data may be slightly stale), and the `/memesoundboard` and `/101soundboards` sources are unaffected by myinstants' Cloudflare entirely.
 >
 > **Month-long caching:** edge-cache TTLs are env-configurable (seconds; `2592000` ≈ 30 days). Proxy/edge hits don't burn proxy credits, so one proxied fetch can serve a URL for a month:
 >
@@ -273,7 +270,6 @@ GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_du
 GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
 GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
 GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
-GET https://myinstants-api.vercel.app/freesound?q=airhorn&min_duration=2&max_duration=6
 ```
 
 ## 🌱 Contributing
