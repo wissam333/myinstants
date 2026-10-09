@@ -299,12 +299,12 @@ switch ($endpoint) {
         }
         $page = get_page_param();
         $url = "https://www.101soundboards.com/tags/" . $tag . "?sort=0&page=" . $page;
-        $html = fetch_html($url);
-        if (!$html) {
+        $raw = fetch_101($url, false);
+        if (!$raw) {
             output_error("Page not found");
         }
-        $boards = parse_101_boards($html);
-        $last = parse_101_last_page($html);
+        $boards = parse_101_boards_raw($raw);
+        $last = parse_101_last_page_raw($raw);
         $has_next = ($last !== null) ? ($page < $last) : (count($boards) > 0);
         $meta = [
             "source" => fetch_source(),
@@ -333,7 +333,7 @@ switch ($endpoint) {
         }
         $page = get_page_param();
         $url = "https://www.101soundboards.com/" . ($isTts ? "tts" : "boards") . "/" . $slug . ($page > 1 ? "?page=" . $page : "");
-        $html = fetch_html($url);
+        $html = fetch_101($url, true);
         if (!$html) {
             output_error("Page not found");
         }

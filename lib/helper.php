@@ -569,50 +569,98 @@ function resolve_101_tag($input) {
     return null;
 }
 
-function parse_101_boards($html) {
+function valid_101_page($body) {
+    if (!$body) return false;
+    return stripos($body, 'board_index_container') !== false
+        || stripos($body, 'board_index_title') !== false
+        || stripos($body, 'soundPlayer') !== false
+        || stripos($body, 'ItemList') !== false;
+}
+
+// 101soundboards fetcher: like fetch_html(), but validates proxy/Wayback
+// fallbacks against 101-specific markup. Tag pages are huge (1.5MB+), so you
+// can opt out of building the DOM with $as_dom = false and regex-parse instead.
+function fetch_101($url, $as_dom = true, $throw = true) {
+    global $fetch_source;
+    $fetch_source = 'live';
+    list($body, $code, $err) = curl_fetch($url);
+    if ($code >= 200 && $code < 300 && !is_challenge_page($body) && valid_101_page($body)) {
+        return $as_dom ? str_get_html($body) : $body;
+    }
+    foreach (proxy_templates() as $tpl) {
+        list($pBody, $pCode) = curl_fetch(str_replace('{url}', urlencode($url), $tpl), 15);
+        if ($pCode >= 200 && $pCode < 300 && !is_challenge_page($pBody) && valid_101_page($pBody)) {
+            $fetch_source = 'proxy';
+            return $as_dom ? str_get_html($pBody) : $pBody;
+        }
+    }
+    list($aBody, $aCode) = curl_fetch(wayback_url($url), 12);
+    if ($aCode >= 200 && $aCode < 300 && valid_101_page($aBody)) {
+        $fetch_source = 'archive';
+        return $as_dom ? str_get_html($aBody) : $aBody;
+    }
+    if (!$throw) return null;
+    output_error("Upstream 101soundboards.com returned HTTP $code (cURL: $err) and no fallback worked. Retry later or set UPSTREAM_PROXY_TEMPLATES.", "502");
+    return null;
+}
+
+function parse_101_boards_raw($html) {
     $boards = [];
     $seen = [];
     $web = "https://www.101soundboards.com";
     if (!$html) return $boards;
-    // Current markup: the card is <a class="board_index_container"> itself.
-    // Older markup: <a href><div class="board_index_container">.</div></a>
-    foreach ($html->find('a') as $a) {
-        $container = null;
-        if ($a->class && strpos($a->class, 'board_index_container') !== false) $container = $a;
-        else $container = $a->find('div.board_index_container', 0);
-        if ($container === null) continue;
-        $href = (string)$a->href;
-        if ($href === '' || (strpos($href, '/boards/') === false && strpos($href, '/tts/') === false)) continue;
-        if (isset($seen[$href])) continue;
-        $seen[$href] = true;
-        $isTts = (strpos($href, '/tts/') !== false);
-        $titleEl = $container->find('.board_index_title', 0);
-        if (!$titleEl) $titleEl = $container->find('.board_title', 0);
-        $title = $titleEl ? trim(html_entity_decode($titleEl->plaintext, ENT_QUOTES | ENT_HTML5)) : '';
-        $thumb = null;
-        $img = $container->find('img', 0);
-        if ($img) $thumb = $img->src ?: $img->getAttribute('data-src');
-        if (!$thumb) {
-            $pic = $container->find('source[type=image/webp]', 0);
-            if ($pic) $thumb = $pic->getAttribute('srcset');
+    // Cards: <a href="{url}" class="board_index_container ..."> with
+    // <div class="board_index_title">Title</div> + <picture>. Regex instead of
+    // DOM because tag pages are multi-megabyte.
+    if (preg_match_all('@<a[^>]*href="([^"]*(?:/boards/|/tts/)[^"]*)"[^>]*class="[^"]*board_index_container[^"]*"[^>]*>(.*?)</a>@is', $html, $m, PREG_SET_ORDER)) {
+        foreach ($m as $card) {
+            $href = $card[1];
+            if (isset($seen[$href])) continue;
+            $seen[$href] = true;
+            $inner = $card[2];
+            $isTts = (strpos($href, '/tts/') !== false);
+            $title = '';
+            if (preg_match('#<div class="board_index_title">\s*(.*?)\s*</div>#is', $inner, $t)) {
+                $title = trim(html_entity_decode(trim(strip_tags($t[1])), ENT_QUOTES | ENT_HTML5));
+            }
+            $thumb = null;
+            if (preg_match('#<source[^>]*type="image/webp"[^>]*srcset="([^"]+)"#i', $inner, $i1)) {
+                $thumb = trim($i1[1]);
+            } elseif (preg_match('#<img[^>]*src="([^"]+)"#i', $inner, $i2)) {
+                $thumb = trim($i2[1]);
+            }
+            if ($thumb) {
+                if (strpos($thumb, '//') === 0) $thumb = 'https:' . $thumb;
+                elseif (strpos($thumb, '/') === 0) $thumb = $web . $thumb;
+                elseif (strpos($thumb, 'http') !== 0) $thumb = $web . '/' . ltrim($thumb, '/');
+            }
+            $url = (strpos($href, 'http') === 0) ? $href : $web . $href;
+            $slug = preg_replace('#^(boards|tts)/#', '', trim((string)parse_url($url, PHP_URL_PATH), '/'));
+            $boards[] = [
+                "id" => $slug,
+                "title" => $title,
+                "url" => $url,
+                "thumbnail" => $thumb ?: null,
+                "type" => $isTts ? 'tts' : 'board',
+                "source" => "101soundboards"
+            ];
         }
-        if ($thumb) {
-            if (strpos($thumb, '//') === 0) $thumb = 'https:' . $thumb;
-            elseif (strpos($thumb, '/') === 0) $thumb = $web . $thumb;
-            elseif (strpos($thumb, 'http') !== 0) $thumb = $web . '/' . ltrim($thumb, '/');
-        }
-        $url = (strpos($href, 'http') === 0) ? $href : $web . $href;
-        $slug = preg_replace('#^(boards|tts)/#', '', trim((string)parse_url($url, PHP_URL_PATH), '/'));
-        $boards[] = [
-            "id" => $slug,
-            "title" => $title,
-            "url" => $url,
-            "thumbnail" => $thumb ?: null,
-            "type" => $isTts ? 'tts' : 'board',
-            "source" => "101soundboards"
-        ];
     }
     return $boards;
+}
+
+function parse_101_last_page_raw($html) {
+    $last = null;
+    if (!$html) return null;
+    if (preg_match('#<ul[^>]*class="pagination"[^>]*>(.*?)</ul>#is', $html, $m)) {
+        if (preg_match_all('#[?&]page=(\d+)#', $m[1], $p)) {
+            foreach ($p[1] as $n) {
+                $n = (int)$n;
+                if ($last === null || $n > $last) $last = $n;
+            }
+        }
+    }
+    return $last;
 }
 
 function parse_101_last_page($html) {
