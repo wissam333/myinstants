@@ -477,6 +477,31 @@ function round_robin_merge($lists) {
     return $out;
 }
 
+function proxy_mp3($mp3) {
+    // 101soundboards protects its CDN with a same-site Referer check, so a
+    // bare <audio src> / direct download 403s from other origins. Route the
+    // file through /stream which replays it with the right Referer + CORS.
+    if (!$mp3) return null;
+    $allowed = is_allowed_audio_host((string)parse_url($mp3, PHP_URL_HOST));
+    if (!$allowed) return $mp3;
+    return base_url() . "/stream?url=" . rawurlencode($mp3);
+}
+
+function is_allowed_audio_host($host) {
+    $host = strtolower(trim((string)$host));
+    if ($host === '') return false;
+    if (preg_match('/(^|\.)101soundboards\.com$/i', $host)) return true;
+    if (preg_match('/(^|\.)soundboard\.cloud$/i', $host)) return true;
+    return false;
+}
+
+function base_url() {
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'myinstants-five.vercel.app');
+    return ($https ? 'https' : 'http') . '://' . $host;
+}
+
 function collect_101_items($node, &$sounds, &$seen) {
     if (!is_array($node)) return;
     if (isset($node['itemListElement']) && is_array($node['itemListElement'])) {
@@ -493,7 +518,8 @@ function collect_101_items($node, &$sounds, &$seen) {
                 "id" => $id,
                 "title" => html_entity_decode($name, ENT_QUOTES | ENT_HTML5),
                 "url" => $url,
-                "mp3" => $mp3,
+                "mp3" => proxy_mp3($mp3),
+                "mp3_original" => $mp3,
                 "thumbnail" => $item['thumbnailUrl'] ?? $item['thumbnail'] ?? null,
                 "duration" => iso8601_to_seconds($item['duration'] ?? null),
                 "source" => "101soundboards"

@@ -17,6 +17,11 @@ if ($endpoint === 'detail') {
     return true;
 }
 
+if ($endpoint === 'stream') {
+    require __DIR__ . '/api/stream.php';
+    return true;
+}
+
 if (in_array($endpoint, $listEndpoints, true)) {
     require __DIR__ . '/api/list.php';
     return true;
