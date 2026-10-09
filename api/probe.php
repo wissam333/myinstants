@@ -5,20 +5,23 @@ $raw = $_GET['url'] ?? '';
 if ($raw === '') {
     output_error("Provide ?url= (comma-separated 101soundboards.com URLs)", "400");
 }
+$defaultNeedles = "v-bind:sound,<audio,data-sound,sound_transcript,board_index_title,ItemList,download_url,\"url\":";
+$needles = explode(',', $_GET['needles'] ?? $defaultNeedles);
 
 $out = [];
 foreach (explode(',', $raw) as $url) {
     $url = trim($url);
     if ($url === '' || strpos($url, '101soundboards.com') === false) continue;
     list($body, $code, $err) = curl_fetch($url);
-    $markers = [];
-    foreach (["soundPlayer", "data-sound", "board_sounds", "board_index_container", "board_title", "<audio", "/boards/", "/tags/", "Just a moment", "cf_chl", "challenges.cloudflare", "captcha", "Enable JavaScript"] as $m) {
-        $markers[$m] = substr_count($body, $m);
-    }
-    $snippet = null;
-    foreach (["soundPlayer", "board_index_container", "Just a moment", "cf_chl", "Enable JavaScript"] as $m) {
-        $p = strpos($body, $m);
-        if ($p !== false) { $snippet = substr($body, max(0, $p - 250), 700); break; }
+    $counts = [];
+    $snippets = [];
+    foreach ($needles as $n) {
+        if ($n === '') continue;
+        $counts[$n] = substr_count($body, $n);
+        $p = strpos($body, $n);
+        if ($p !== false) {
+            $snippets[$n] = substr($body, max(0, $p - 300), 1200);
+        }
     }
     $out[] = [
         "url" => $url,
@@ -26,8 +29,9 @@ foreach (explode(',', $raw) as $url) {
         "curl_error" => $err,
         "length" => strlen($body),
         "is_challenge" => is_challenge_page($body),
-        "markers" => $markers,
-        "snippet" => $snippet
+        "counts" => $counts,
+        "snippets" => $snippets,
+        "head" => substr($body, 0, 2500)
     ];
 }
 output_json($out, "200", ["count" => count($out)]);
