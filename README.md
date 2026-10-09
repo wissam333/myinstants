@@ -80,7 +80,7 @@
 | `GET /uploaded`  | User's uploaded sounds   | `username`, `page` |
 | `GET /favorites` | User's favorite sounds   | `username`, `page` |
 | `GET /category`  | Sounds by category       | `category`, `q`, `page` |
-| `GET /memesoundboard` | Sounds from MemeSoundboard.io | `q`, `page` |
+| `GET /memesoundboard` | Sounds from MemeSoundboard.io (search or browse) | `q`, `sort`, `page`, `page_size` |
 | `GET /101soundboards` | Sounds from 101Soundboards.com | `q`, `page` |
 | `GET /101categories` | 101Soundboards category (tag) list | _none_ |
 | `GET /101category` | Boards inside a 101Soundboards category | `tag`, `page` |
@@ -92,6 +92,8 @@ _All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/
 _Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` interleaves all sources (round-robin) and reports per-source status in `sources`. 101Soundboards items include `thumbnail` and a free `duration` (no probing needed)._
 
 _101Soundboards is two levels deep: a category (tag) page lists **boards**, and each board holds the actual sounds. Use `/101categories` to list the available tags, `/101category?tag=games` to page through boards, then `/101board?board=36000-halo-ringtones` to get the sounds of one board._
+
+_`/memesoundboard` has two modes: pass `?q=` to search by name, or omit `q` to browse the catalog without a query — `sort` selects the feed (`new` = newest, default, `trending`, `all` = full catalog). `page_size` (1–100, default 35) tunes the page size. Example: `/memesoundboard?sort=trending&page=2&page_size=50`._
 
 ### Request Parameters
 
@@ -279,7 +281,15 @@ GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
 GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
 ```
 
-### Example 12: Browse 101Soundboards by Category (tags -> boards -> sounds)
+### Example 12: Browse MemeSoundboard Without a Query (newest / trending / all)
+
+```http
+GET https://myinstants-api.vercel.app/memesoundboard
+GET https://myinstants-api.vercel.app/memesoundboard?sort=trending&page=2
+GET https://myinstants-api.vercel.app/memesoundboard?sort=all&page_size=50
+```
+
+### Example 13: Browse 101Soundboards by Category (tags -> boards -> sounds)
 
 ```http
 GET https://myinstants-api.vercel.app/101categories

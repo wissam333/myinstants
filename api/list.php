@@ -136,22 +136,37 @@ switch ($endpoint) {
 
     case "memesoundboard": {
         $query = $_GET['q'] ?? "";
-        if (!$query) output_error("Query parameter 'q' is required, example: ?q=bruh");
-
         $page = get_page_param();
         list($with_duration, $min_duration, $max_duration) = get_duration_params();
 
-        $apiUrl = "https://play-v1.soundboard.cloud/api/memesoundboard.io/sounds/search?name=" . urlencode($query) . "&page=" . $page . "&page_size=35";
+        $page_size = 35;
+        if (isset($_GET['page_size']) && $_GET['page_size'] !== "") {
+            $page_size = (int)$_GET['page_size'];
+            if ($page_size < 1) $page_size = 1;
+            if ($page_size > 100) $page_size = 100;
+        }
+
+        if ($query) {
+            $mode = "search";
+            $apiUrl = "https://play-v1.soundboard.cloud/api/memesoundboard.io/sounds/search?name=" . urlencode($query) . "&page=" . $page . "&page_size=" . $page_size;
+        } else {
+            $sort = $_GET['sort'] ?? "new";
+            if (!in_array($sort, ["new", "trending", "all"], true)) output_error("Invalid 'sort' (new|trending|all), example: ?sort=trending", "400");
+            $mode = $sort;
+            $rel = ($sort === "all") ? "/sounds" : "/sounds/" . $sort;
+            $apiUrl = "https://play-v1.soundboard.cloud/api/memesoundboard.io" . $rel . "?page=" . $page . "&page_size=" . $page_size;
+        }
+
         list($body, $code) = curl_fetch($apiUrl, 15);
-        if ($code < 200 || $code >= 300 || !$body) output_error("Upstream memesoundboard search failed (HTTP $code). Please retry later.", "502");
+        if ($code < 200 || $code >= 300 || !$body) output_error("Upstream memesoundboard request failed (HTTP $code). Please retry later.", "502");
 
         $data = json_decode($body, true);
         if (!is_array($data)) output_error("Upstream memesoundboard returned invalid data. Please retry later.", "502");
 
-        list($sounds, $total_pages, $msb_has_next) = parse_msb_api($data, $query, $page, 35);
+        list($sounds, $total_pages, $msb_has_next) = parse_msb_api($data, $query ?: $mode, $page, $page_size);
         $sounds = apply_duration_filter($sounds, $with_duration, $min_duration, $max_duration);
         $meta = array_merge(
-            ["source" => "memesoundboard"],
+            ["source" => "memesoundboard", "mode" => $mode, "page_size" => $page_size],
             pagination_meta($page, $total_pages, count($sounds))
         );
         if ($msb_has_next !== null) $meta["has_next"] = $msb_has_next;
