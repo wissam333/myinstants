@@ -653,7 +653,7 @@ function parse_101_last_page_raw($html) {
     $last = null;
     if (!$html) return null;
     if (preg_match('#<ul[^>]*class="pagination"[^>]*>(.*?)</ul>#is', $html, $m)) {
-        if (preg_match_all('#[?&]page=(\d+)#', $m[1], $p)) {
+        if (preg_match_all('#page=(\d+)#', $m[1], $p)) {
             foreach ($p[1] as $n) {
                 $n = (int)$n;
                 if ($last === null || $n > $last) $last = $n;
