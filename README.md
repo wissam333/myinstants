@@ -1,70 +1,84 @@
-<p align="center"><img src="https://www.myinstants.com/media/apple-touch-icon-114x114.png" alt="MyInstants"></p>
-<h1 align="center">MyInstants REST API</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://www.myinstants.com/media/apple-touch-icon-114x114.png">
+    <img src="https://www.myinstants.com/media/apple-touch-icon-114x114.png" alt="UniSound" width="96">
+  </picture>
+</p>
+<h1 align="center">UniSound API</h1>
+
+<p align="center"><strong>One REST API for every soundboard.</strong><br>
+Search and browse <b>myinstants</b> · <b>memesoundboard</b> · <b>101soundboards</b> as one clean JSON feed.</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/PHP-7.4%2B-777BB4?logo=php&logoColor=white" alt="PHP Version">
+  <img src="https://img.shields.io/badge/3--in--1%20sound--sources-enabled-8A2BE2" alt="3 sources">
   <img src="https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white" alt="Deployed on Vercel">
+  <img src="https://img.shields.io/badge/Serverless-Functions-0ea5e9?logo=serverless&logoColor=white" alt="Serverless Functions">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
 </p>
 
-<p align="center">A RESTful API for scraping and retrieving sound data from the <a href="https://www.myinstants.com" target="_blank">MyInstants</a> website. This API provides endpoints for retrieving information about sounds, including titles, URLs, descriptions, tags, favorites, views, and uploader details.</p>
+<p align="center"><b>Try it live:</b>&nbsp; <code>https://myinstants-five.vercel.app</code></p>
+
+UniSound aggregates sound effects from the three biggest soundboard platforms and serves them through a single, consistent, CORS-enabled REST API. One request shape, one JSON schema, three sources — no scrapers to maintain, no soundboard to pick.
 
 ## ✨ Features
 
-- ⚡ **Ultra Fast**: Powered by Vercel Edge Caching (`s-maxage=3600`) for ~0ms response times on cached requests.
-- 🚀 **Serverless Ready**: Native deployment to Vercel without tweaking. Uses separate serverless functions for maximum efficiency.
-- 🌐 **CORS Enabled**: Ready to be consumed directly from frontend web applications (React, Vue, etc) without cross-origin issues.
-- 🎯 **Reliable Error Handling**: Returns proper HTTP status codes (e.g., 404, 400) instead of just 200 OK.
+- 🎧 **3 sound sources, 1 API** — myinstants, MemeSoundboard, and 101Soundboards behind identical response schemas.
+- 🔀 **Merged search** — `/search_all?q=bruh` searches every source in parallel and interleaves the best matches (round-robin), with per-source health in the response.
+- 📦 **Proper pagination everywhere** — every list endpoint accepts `?page=N`, and `/memesoundboard` adds `?page_size=` plus query-free browse feeds (`sort=new|trending|all`).
+- 🔐 **Hotlink-proof audio proxy** — `/stream?url=<encoded mp3>` replays hotlink-protected 101Soundboards files with the correct `Referer`, CORS, and full HTTP `Range` support, so `<audio>` playback and audio-splitters work from any origin. `mp3` is always *playable*; the direct URL (if any) is exposed separately as `mp3_original`.
+- ⏱️ **Duration filtering** — `?with_duration=1&min_duration=2&max_duration=6` probes MP3 headers and keeps only the clips you want.
+- 🧭 **Two-level category browsing for 101Soundboards** — categories → boards → sounds (`/101categories`, `/101category`, `/101board`).
+- ⚡ **Fast** — Vercel edge caching (`s-maxage`), parallel upstream fetches, Cloudflare-safe fallbacks (proxy → Wayback snapshot).
+- 🚀 **Serverless** — deploys free on Vercel with separate functions per endpoint; runs locally with a single `php -S` command.
+- 🌐 **CORS enabled** — safe to call straight from React/Vue/Node/Discord bots, no proxy needed.
 
 ## Table of Contents
 
-- [Features](#-features)
-- [Getting Started](#-getting-started)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-- [Reference](#%EF%B8%8F-reference)
-  - [Endpoints](#endpoints)
-  - [Request Parameters](#request-parameters)
-  - [Response Example](#response-example)
+- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Endpoints](#-reference)
+- [Request Parameters](#request-parameters)
+- [The Audio Proxy (`/stream`)](#-the-audio-proxy-stream)
+- [Response Example](#response-example)
 - [Error Handling](#-error-handling)
 - [Examples](#-examples)
+- [Run Locally](#-run-locally)
+- [Deploy to Vercel](#-deploy-to-vercel)
+- [Escaping Cloudflare Anti-Bot (myinstants)](#-escaping-cloudflare-anti-bot-myinstants)
 - [Contributing](#-contributing)
-- [Support](#-support)
 - [Credits](#-credits)
 - [License & Disclaimer](#%EF%B8%8F-license)
 
-## 🚀 Getting Started
+## How It Works
 
-### Requirements
+| Source | What you get | Notes |
+|:--|:--|:--|
+| **myinstants** | `/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category` | Site uses Cloudflare anti-bot; the API falls back to a proxy → Wayback snapshot automatically. No `duration` in the HTML (optional MP3 probing). |
+| **memesoundboard** | `/memesoundboard` | Clean DRF JSON API: search by `q`, or browse without a query via `sort=new / trending / all`; full pagination + `page_size`. |
+| **101soundboards** | `/101soundboards`, `/101categories`, `/101category`, `/101board` | Sounds carry free `duration` + `thumbnail`. CDN is hotlink-protected, so its `mp3` is served through the built-in proxy. |
 
-- PHP 7.4 or higher
-- [simple_html_dom.php](https://simplehtmldom.sourceforge.io/) library for HTML parsing
-- `curl` extension enabled in `php.ini`
+Every item carries a `source` field, so you can always tell which provider it came from.
 
-### Installation
+## Quick Start
 
-1. Clone the repository to your server:
+```bash
+# One line, no key, no auth
+curl "https://myinstants-five.vercel.app/search?q=laugh"
+```
 
-    ```bash
-    git clone https://github.com/wissam333/myinstants.git
-    cd myinstants
-    ```
+```javascript
+// Node.js
+const res = await fetch("https://myinstants-five.vercel.app/search?q=bruh&min_duration=1&max_duration=6");
+const json = await res.json();
+console.log(json.data.map(s => s.title));
+```
 
-2. Download and place `simple_html_dom.php` in the `lib/` directory.
-
-3. **Local Development (No Apache/Nginx required)**:
-   You can run the API locally using PHP's built-in web server. This project includes a `router.php` file that perfectly simulates Vercel's serverless routing environment, allowing you to access endpoints without the `.php` extension.
-
-   ```bash
-   php -S localhost:8000 router.php
-   ```
-
-   Now you can access the API locally (e.g., `http://localhost:8000/best?q=id`).
-
-4. **Deploy to Vercel**:
-   Deploying is simple. Click the button below to deploy this repository directly to your Vercel account.<br>
-    [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F&redirect-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Fmyinstants%2F)
+```bash
+# Merged search across all three providers
+curl "https://myinstants-five.vercel.app/search_all?q=bruh"
+```
 
 ## ❇️ Reference
 
@@ -72,7 +86,7 @@
 
 | Request          | Response                 | Parameter  |
 | :--------------- | :----------------------- | :--------: |
-| `GET /trending`  | Trending based region    | `q`, `page` |
+| `GET /trending`  | Trending by region       | `q`, `page` |
 | `GET /search`    | Search a sound           | `q`, `page` |
 | `GET /detail`    | The sound details        |    `id`    |
 | `GET /recent`    | Recently uploaded sounds |   `page`   |
@@ -86,8 +100,9 @@
 | `GET /101category` | Boards inside a 101Soundboards category | `tag`, `page` |
 | `GET /101board` | Sounds inside a 101Soundboards board | `board`, `page` |
 | `GET /search_all` | Merged search across all sources | `q`, `page` |
+| `GET /stream` | Hotlink-safe audio proxy | `url` |
 
-_All list endpoints (`/trending`, `/search`, `/recent`, `/best`, `/uploaded`, `/favorites`, `/category`, `/memesoundboard`, `/101soundboards`, `/101category`, `/101board`, `/search_all`) support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
+_All list endpoints support pagination via `?page=N` (default `1`) and duration probing via `?with_duration=1&min_duration=2&max_duration=6`._
 
 _Each item carries a `source` field (`myinstants`, `memesoundboard`, `101soundboards`). `/search_all` interleaves all sources (round-robin) and reports per-source status in `sources`. 101Soundboards items include `thumbnail` and a free `duration` (no probing needed)._
 
@@ -97,20 +112,35 @@ _`/memesoundboard` has two modes: pass `?q=` to search by name, or omit `q` to b
 
 ### Request Parameters
 
-|   Parameter    | Description                                              |
-| :------------: | :------------------------------------------------------- |
-|      `q`       | Search query or region                                   |
-|   `username`   | User's username                                          |
-|      `id`      | Sound's Unique ID                                        |
-|     `page`     | Page number (>= 1, default `1`). Example: `?page=4`      |
-|   `category`   | Category name (required for `/category`, case-insensitive). One of: `anime & manga`, `games`, `memes`, `movies`, `music`, `politics`, `pranks`, `reactions`, `sound effects`, `sports`, `television`, `tiktok trends`, `viral`, `whatsapp audios` |
-|     `tag`      | 101Soundboards category tag (required for `/101category`, slug or name). One of: `anime-comics-cartoons`, `celebrities`, `comedy`, `games`, `memes-funny`, `movies`, `music-musicians`, `nature`, `other`, `politics`, `sound-fx`, `sports`, `streamers-twitch-podcasts`, `tv`, `united-kingdom`, `united-states` |
-|    `board`     | 101Soundboards board slug, `boards/{id-slug}`, or full URL (required for `/101board`). Example: `?board=36000-halo-ringtones` |
-| `with_duration`| `1` to include MP3 `duration` (seconds) per sound        |
-| `min_duration` | Only keep sounds >= N seconds (implies `with_duration`)  |
-| `max_duration` | Only keep sounds <= N seconds (implies `with_duration`)  |
+|    Parameter    | Description                                              |
+| :-------------: | :------------------------------------------------------- |
+|      `q`        | Search query or region                                   |
+|   `username`    | User's username                                          |
+|      `id`       | Sound's unique ID                                        |
+|     `page`      | Page number (>= 1, default `1`). Example: `?page=4`      |
+|    `sort`       | memesoundboard browse feed: `new` (default), `trending`, `all`. Only used when `q` is omitted |
+|  `page_size`    | memesoundboard page size (1–100, default 35)             |
+|   `category`    | myinstants category (required for `/category`, case-insensitive). One of: `anime & manga`, `games`, `memes`, `movies`, `music`, `politics`, `pranks`, `reactions`, `sound effects`, `sports`, `television`, `tiktok trends`, `viral`, `whatsapp audios` |
+|     `tag`       | 101Soundboards category tag (required for `/101category`, slug or name). One of: `anime-comics-cartoons`, `celebrities`, `comedy`, `games`, `memes-funny`, `movies`, `music-musicians`, `nature`, `other`, `politics`, `sound-fx`, `sports`, `streamers-twitch-podcasts`, `tv`, `united-kingdom`, `united-states` |
+|    `board`      | 101Soundboards board slug, `boards/{id-slug}`, or full URL (required for `/101board`). Example: `?board=36000-halo-ringtones` |
+|     `url`       | URL-encoded mp3 to replay through the proxy (required for `/stream`) |
+| `with_duration` | `1` to include MP3 `duration` (seconds) per sound        |
+| `min_duration`  | Only keep sounds >= N seconds (implies `with_duration`)  |
+| `max_duration`  | Only keep sounds <= N seconds (implies `with_duration`)  |
 
 _Note: `myinstants.com` exposes no durations in its HTML, so `with_duration` / `min_duration` / `max_duration` probe each MP3 and parse the MPEG frame headers. Lists stay fast by default; responses are slower (parallel fetch, best-effort, `duration: null` when undetectable) only when duration params are used._
+
+### 🔒 The Audio Proxy (`/stream`)
+
+101Soundboards protects its CDN (`hoovers.101soundboards.com`) with a same-site `Referer` check — a bare `<audio src="…">` or direct link 403s from any other origin. UniSound solves this with a built-in streaming proxy:
+
+```
+GET /stream?url=https%3A%2F%2Fhoovers.101soundboards.com%2Fsounds%2F...mp3
+```
+
+- Proxies only the whitelisted audio hosts (`*.101soundboards.com`, `*.soundboard.cloud`), so it can't be used as an open relay.
+- Replays the file with the correct `Referer`, sets open CORS headers, and **passes through HTTP `Range` requests** (`Accept-Ranges`, `Content-Length`, `206 Partial Content`), so it behaves exactly like the original file: seeking, preloading and audio-splitters all work.
+- For every sound item, `mp3` is **always the playable URL** — a `/stream` link for hotlink-protected sources, a direct `.mp3` otherwise. When a direct URL exists too, it's returned as `mp3_original`.
 
 ### Response Example
 
@@ -118,69 +148,48 @@ A typical successful response (HTTP 200) will return a JSON object like this:
 
 ```json
 {
-  "status": 200,
+  "status": "200",
   "author": "wissam333",
-  "page": 4,
-  "count": 30,
-  "total_pages": 50,
+  "source": "memesoundboard",
+  "mode": "search",
+  "page_size": 35,
+  "page": 1,
+  "count": 35,
+  "total_pages": 13,
   "has_next": true,
   "data": [
     {
-      "id": "vine-boom-sound-70972",
-      "title": "VINE BOOM SOUND",
-      "url": "https://www.myinstants.com/en/instant/vine-boom-sound-70972/",
-      "mp3": "https://www.myinstants.com/media/sounds/vine-boom.mp3",
-      "duration": 1.42
+      "id": "12108",
+      "title": "Enisa folk",
+      "url": "https://memesoundboard.io/search/new",
+      "mp3": "https://play-v1.soundboard.cloud/media/sounds/20261009_041819_Enisa_folk.mp3",
+      "duration": null,
+      "source": "memesoundboard"
     }
   ]
 }
 ```
 
-_`page` / `count` / `total_pages` / `has_next` are returned by all list endpoints (`total_pages` is parsed from the upstream `Page X of Y` title, `null` when undetectable). `duration` (seconds) only appears when `with_duration=1` or `min_duration` / `max_duration` is used. `/category` additionally echoes `category` and `region` (`null` when global). `/101category` echoes `tag`, `name`, and `kind: "boards"` (its items are boards, not sounds); `/101board` echoes `board`._
+_`page` / `count` / `total_pages` / `has_next` are returned by all list endpoints (`total_pages` is parsed from the upstream `Page X of Y` title, `null` when undetectable). `duration` (seconds) only appears when `with_duration=1` or `min_duration` / `max_duration` is used. `/category` additionally echoes `category` and `region` (`null` when global). `/101category` echoes `tag`, `name`, and `kind: "boards"` (its items are boards, not sounds); `/101board` echoes `board`. 101Soundboards items also carry `thumbnail` and `mp3_original`._
 
 _`source` is `"live"` normally, `"proxy"` when served via your scraper proxy, or `"archive"` when `myinstants.com` blocked the request and the data was served from the latest Wayback Machine snapshot instead (data may be older; `mp3` links still point at the live site, and archive responses are edge-cached for 24h). If no source works, the API returns HTTP `502` — retry later._
-
-> **Anti-bot note:** `myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it, and free forward-proxies (corsproxy.io, allorigins, codetabs…) don't either — they get the same challenge page. The reliable, serverless-friendly fix is a free-tier **scraper API** (a cloud browser that solves the challenge for you). No VPS or extra infrastructure needed:
->
-> 1. Sign up for free credits — recommended: [ZenRows](https://www.zenrows.com/) (~2,000 free credits, no card) or [ScrapingBee](https://www.scrapingbee.com/) (~1,000 free credits).
-> 2. Copy your API key from their dashboard.
-> 3. Set the `UPSTREAM_PROXY_TEMPLATES` env var in Vercel (Dashboard → Settings → Environment Variables) to the template **with the anti-bot flags included** — without them, the plain fetch gets the same Cloudflare block:
->
-> ```
-> # ZenRows (recommended) — antibot+js_render flags are what defeat Cloudflare:
-> UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY&url={url}&js_render=true&antibot=true&premium_proxy=true
->
-> # ScrapingBee — stealth_proxy is their Cloudflare-bypass mode:
-> UPSTREAM_PROXY_TEMPLATES=https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}&render_js=true&stealth_proxy=1
->
-> # You can chain several (comma-separated, tried in order) to mix free tiers:
-> UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY1&url={url}&js_render=true&antibot=true,https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url}&render_js=true&stealth_proxy=1
-> ```
->
-> (The old singular `UPSTREAM_PROXY_TEMPLATE` still works for a single entry.)
->
-> **Credits last longer than they look:** the proxy is only consulted *after* a direct fetch fails with 403/429 (live is always tried first), and every proxied page is edge-cached (see month-long caching below), so one credit can serve many requests. Rough ZenRows math: an antibot request costs ~25 credits → ~80 protected fetches per free signup, stretched much further by caching. Rotate/re-sign-up if you burn through them.
->
-> Without any proxy configured, the API automatically falls back to Wayback Machine snapshots when blocked (`source: "archive"`, data may be slightly stale), and the `/memesoundboard` and `/101soundboards` sources are unaffected by myinstants' Cloudflare entirely.
->
-> **Month-long caching:** edge-cache TTLs are env-configurable (seconds; `2592000` ≈ 30 days). Proxy/edge hits don't burn proxy credits, so one proxied fetch can serve a URL for a month:
->
-> ```
-> CACHE_SMAXAGE_LIVE=2592000
-> CACHE_SMAXAGE_PROXY=2592000
-> CACHE_SMAXAGE_ARCHIVE=2592000
-> ```
->
-> (Defaults: live/proxy `3600`, archive `86400`. Note: Vercel's edge cache is best-effort — entries can be evicted under pressure and every redeploy purges it, causing a fresh round of upstream fetches. Cache keys include the full query string, so each `page`/filter combo is cached separately.)
-
-_Note: For the `/detail` endpoint, the `data` object will contain extra fields like `description`, `tags`, `favorites`, `views`, and `uploader` (plus `duration` when `?with_duration=1` is passed)._
 
 ## 💥 Error Handling
 
 All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 400) and a `message` explaining the issue.
 
-- **404 Error**:
-  - When the page is not found or an invalid endpoint is accessed.
+- **400 Error** — bad request (e.g., invalid page, unknown `sort`, missing required param):
+
+  ```json
+  {
+    "status": "400",
+    "author": "wissam333",
+    "message": "Invalid 'sort' (new|trending|all), example: ?sort=trending"
+  }
+  ```
+
+- **404 Error** — when the page is not found or an invalid endpoint is accessed:
+
   ```json
   {
     "status": 404,
@@ -189,8 +198,8 @@ All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 
   }
   ```
 
-- **502 Error**:
-  - When `myinstants.com` refuses the request (HTTP 403/429 anti-bot protection). Retry later — cached responses still work.
+- **502 Error** — when an upstream provider refuses the request (HTTP 403/429 anti-bot protection). Retry later — cached responses still work:
+
   ```json
   {
     "status": 502,
@@ -201,101 +210,122 @@ All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 
 
 ## 🌐 Examples
 
-### Example 1: Get Trending Sounds by Region
+### Example 1: Trends & Search
 
 ```http
-GET https://myinstants-api.vercel.app/trending?q=id
+GET https://myinstants-five.vercel.app/trending?q=id
+GET https://myinstants-five.vercel.app/search?q=laugh
 ```
 
-### Example 2: Search Sounds by Query
+### Example 2: Sound Details
 
 ```http
-GET https://myinstants-api.vercel.app/search?q=laugh
+GET https://myinstants-five.vercel.app/detail?id=akh-26815
 ```
 
-### Example 3: Get Sound Details by ID
+### Example 3: Recently Uploaded / Best of All Time
 
 ```http
-GET https://myinstants-api.vercel.app/detail?id=akh-26815
+GET https://myinstants-five.vercel.app/recent
+GET https://myinstants-five.vercel.app/best?q=id
 ```
 
-### Example 4: Get Recently Uploaded Sounds
+### Example 4: A User's Uploads & Favorites
 
 ```http
-GET https://myinstants-api.vercel.app/recent
+GET https://myinstants-five.vercel.app/uploaded?username=hellmouz
+GET https://myinstants-five.vercel.app/favorites?username=hellmouz
 ```
 
-### Example 5: Get Best of All Time Sounds
-
-Retrieve a list of the most popular sounds of all time based on a specified region:
+### Example 5: Paginate Any List (e.g. Trending Syria, Page 4)
 
 ```http
-GET https://myinstants-api.vercel.app/best?q=id
+GET https://myinstants-five.vercel.app/trending?q=sy&page=4
+GET https://myinstants-five.vercel.app/search?q=laugh&page=2
+GET https://myinstants-five.vercel.app/recent?page=2
 ```
 
-### Example 6: Get User's Uploaded Sounds
+### Example 6: Only 2–6 Second Sounds
 
 ```http
-GET https://myinstants-api.vercel.app/uploaded?username=hellmouz
+GET https://myinstants-five.vercel.app/search?q=laugh&min_duration=2&max_duration=6
+GET https://myinstants-five.vercel.app/trending?q=sy&page=4&min_duration=2&max_duration=6
 ```
 
-### Example 7: Get User's Favorite Sounds
+### Example 7: Sounds by Category (Optional Region + Pagination)
 
 ```http
-GET https://myinstants-api.vercel.app/favorites?username=hellmouz
+GET https://myinstants-five.vercel.app/category?category=music
+GET https://myinstants-five.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
 ```
 
-### Example 8: Paginate Any List (e.g. Trending Syria, Page 4)
-
-Mirrors https://www.myinstants.com/en/index/sy/?page=4 — page 1 is the default and returns the same shape as before:
+### Example 8: Other Providers (Merged or Per-Source)
 
 ```http
-GET https://myinstants-api.vercel.app/trending?q=sy&page=4
-GET https://myinstants-api.vercel.app/search?q=laugh&page=2
-GET https://myinstants-api.vercel.app/recent?page=2
+GET https://myinstants-five.vercel.app/search_all?q=bruh&page=1
+GET https://myinstants-five.vercel.app/memesoundboard?q=bruh&page=2
+GET https://myinstants-five.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
 ```
 
-### Example 9: Only 2–6 Second Sounds
+### Example 9: Browse MemeSoundboard Without a Query
 
 ```http
-GET https://myinstants-api.vercel.app/search?q=laugh&min_duration=2&max_duration=6
-GET https://myinstants-api.vercel.app/trending?q=sy&page=4&min_duration=2&max_duration=6
-GET https://myinstants-api.vercel.app/search?q=laugh&with_duration=1
+GET https://myinstants-five.vercel.app/memesoundboard
+GET https://myinstants-five.vercel.app/memesoundboard?sort=trending&page=2
+GET https://myinstants-five.vercel.app/memesoundboard?sort=all&page_size=50
 ```
 
-### Example 10: Get Sounds by Category (with Optional Region + Pagination)
-
-Mirrors https://www.myinstants.com/en/categories/anime%20&%20manga/sy/?page=9 — `q` (region) is optional; omit it for the global listing:
+### Example 10: Browse 101Soundboards (tags -> boards -> sounds)
 
 ```http
-GET https://myinstants-api.vercel.app/category?category=music
-GET https://myinstants-api.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
-GET https://myinstants-api.vercel.app/category?category=memes&q=sy&page=2&min_duration=2&max_duration=6
+GET https://myinstants-five.vercel.app/101categories
+GET https://myinstants-five.vercel.app/101category?tag=games&page=1
+GET https://myinstants-five.vercel.app/101board?board=36000-halo-ringtones
 ```
 
-### Example 11: Search Other Sound Sites (Merged or Per-Source)
+### Example 11: Audio Proxy (seekable, range-friendly)
 
 ```http
-GET https://myinstants-api.vercel.app/search_all?q=bruh&page=1
-GET https://myinstants-api.vercel.app/memesoundboard?q=bruh&page=2
-GET https://myinstants-api.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
+GET https://myinstants-five.vercel.app/stream?url=https%3A%2F%2Fhoovers.101soundboards.com%2Fsounds%2Fhalo-ringtones%2Fmaster-chief.mp3
 ```
 
-### Example 12: Browse MemeSoundboard Without a Query (newest / trending / all)
+## 🚀 Run Locally
 
-```http
-GET https://myinstants-api.vercel.app/memesoundboard
-GET https://myinstants-api.vercel.app/memesoundboard?sort=trending&page=2
-GET https://myinstants-api.vercel.app/memesoundboard?sort=all&page_size=50
+```bash
+git clone https://github.com/wissam333/unisound-api.git
+cd unisound-api
+# simple_html_dom.php lives in lib/ (already vendored in this repo)
+php -S localhost:8000 router.php
 ```
 
-### Example 13: Browse 101Soundboards by Category (tags -> boards -> sounds)
+Then open `http://localhost:8000/search?q=laugh`. The included `router.php` mirrors Vercel's routing exactly, so you get the same extensionless URLs locally.
 
-```http
-GET https://myinstants-api.vercel.app/101categories
-GET https://myinstants-api.vercel.app/101category?tag=games&page=1
-GET https://myinstants-api.vercel.app/101board?board=36000-halo-ringtones
+## ☁️ Deploy to Vercel
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwissam333%2Funisound-api)
+
+**Requirements**: PHP 7.4+ runtime (enabled on Vercel), `curl` extension, no external database. The API detects its own base URL, so zero configuration is needed to go live.
+
+## 🛡️ Escaping Cloudflare Anti-Bot (myinstants)
+
+`myinstants.com` runs Cloudflare bot protection that sometimes blocks datacenter IPs (Vercel) with HTTP 403. Browser headers alone can't pass it, and free forward-proxies (corsproxy.io, allorigins, codetabs…) don't either. The reliable, serverless-friendly fix is a free-tier **scraper API** (a cloud browser that solves the challenge for you):
+
+1. Sign up for free credits — [ZenRows](https://www.zenrows.com/) (~2,000 free credits, no card) or [ScrapingBee](https://www.scrapingbee.com/) (~1,000 free credits).
+2. Copy your API key and set it in Vercel → Settings → Environment Variables.
+3. Set `UPSTREAM_PROXY_TEMPLATES` (comma-separated, tried in order):
+
 ```
+# ZenRows (recommended) — antibot+js_render flags are what defeat Cloudflare:
+UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY&url={url}&js_render=true&antibot=true&premium_proxy=true
+
+# ScrapingBee — stealth_proxy is their Cloudflare-bypass mode:
+UPSTREAM_PROXY_TEMPLATES=https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}&render_js=true&stealth_proxy=1
+
+# You can chain several (comma-separated) to mix free tiers:
+UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY1&url={url}&js_render=true&antibot=true,https://app.scrapingbee.com/api/v1/?api_key=KEY2&url={url}&render_js=true&stealth_proxy=1
+```
+
+> **Credits last longer than they look:** the proxy is only consulted *after* a direct fetch fails with 403/429 (live is always tried first), and every proxied page is edge-cached (`CACHE_SMAXAGE_PROXY=2592000` ≈ 30 days), so one credit can serve many requests. Without any proxy configured, the API auto-falls back to Wayback Machine snapshots (`source: "archive"`), and the **memesoundboard and 101Soundboards sources are unaffected by myinstants' Cloudflare entirely.** For myinstants, if no source works, the API returns HTTP `502` — retry later.
 
 ## 🌱 Contributing
 
@@ -307,31 +337,17 @@ Contributions are welcome! To contribute:
 4. Push to the branch: `git push origin feature-name`.
 5. Submit a pull request.
 
-## ✨ Support
-
-If you like this project, please star on this repository, thank you ⭐
-
-### Star History
-
-<a href="https://www.star-history.com/?repos=wissam333%2Fmyinstants&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=wissam333/myinstants&type=date&legend=top-left" />
- </picture>
-</a>
-
 ## 🙏 Credits
 
-- Original project by [abdipr](https://github.com/abdipr/myinstants-api).
-- Updated and maintained by [wissam333](https://github.com/wissam333/myinstants).
+- Original myinstants API by [abdipr](https://github.com/abdipr/myinstants-api).
+- Extended into a multi-source API (memesoundboard + 101Soundboards, audio proxy, duration filters, category browsing) and maintained by [wissam333](https://github.com/wissam333).
 
 ## ⚖️ License
 
-This project is licensed under the `MIT License`. See the [LICENSE](https://github.com/wissam333/myinstants/blob/main/LICENSE) file for more information.
+This project is licensed under the `MIT License`. See the [LICENSE](https://github.com/wissam333/unisound-api/blob/main/LICENSE) file for more information.
 
 ## ⚠️ Disclaimer
 
-The sounds contained in this API are obtained from the original [MyInstants](https://www.myinstants.com) website by web scraping. Developers using this API must follow the applicable regulations by mentioning this project or the official owner in their projects and are prohibited from abusing this API for personal benefits.
+The sounds contained in this API are obtained from the original [MyInstants](https://www.myinstants.com), [MemeSoundboard](https://memesoundboard.io), and [101Soundboards](https://www.101soundboards.com) websites by web scraping. Developers using this API must follow the applicable regulations by mentioning this project or the official owners in their projects and are prohibited from abusing this API for personal benefits.
 
-[⬆️ Back to Top](#myinstants-rest-api)
+[⬆️ Back to Top](#unisound-api)
