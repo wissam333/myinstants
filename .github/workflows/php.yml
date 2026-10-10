@@ -1,0 +1,18 @@
+name: Lint
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  php-lint:
+    name: PHP syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run php -l on all sources
+        run: |
+          set -e
+          for file in $(find api lib -name '*.php' -print; echo router.php); do
+            php -l "$file"
+          done

@@ -9,6 +9,7 @@ Search and browse <b>myinstants</b> · <b>memesoundboard</b> · <b>101soundboard
   <img src="https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white" alt="Deployed on Vercel">
   <img src="https://img.shields.io/badge/Serverless-Functions-0ea5e9?logo=serverless&logoColor=white" alt="Serverless Functions">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT">
+  <img src="https://img.shields.io/github/actions/workflow/status/wissam333/unisound-api/php.yml?label=CI&logo=githubactions" alt="CI">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
 </p>
 
@@ -321,7 +322,7 @@ UPSTREAM_PROXY_TEMPLATES=https://api.zenrows.com/v1/?apikey=KEY1&url={url}&js_re
 
 ## 🌱 Contributing
 
-Contributions are welcome! To contribute:
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and style notes. To contribute:
 
 1. Fork the repository.
 2. Create a feature branch: `git checkout -b feature-name`.
