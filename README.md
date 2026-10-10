@@ -18,8 +18,6 @@ Search and browse <b>myinstants</b> · <b>memesoundboard</b> · <b>101soundboard
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
 </p>
 
-<p align="center"><b>Try it live:</b>&nbsp; <code>https://myinstants-five.vercel.app</code></p>
-
 UniSound aggregates sound effects from the three biggest soundboard platforms and serves them through a single, consistent, CORS-enabled REST API. One request shape, one JSON schema, three sources — no scrapers to maintain, no soundboard to pick.
 
 ## ✨ Features
@@ -65,19 +63,19 @@ Every item carries a `source` field, so you can always tell which provider it ca
 
 ```bash
 # One line, no key, no auth
-curl "https://myinstants-five.vercel.app/search?q=laugh"
+curl "https://<your-deployment>.vercel.app/search?q=laugh"
 ```
 
 ```javascript
 // Node.js
-const res = await fetch("https://myinstants-five.vercel.app/search?q=bruh&min_duration=1&max_duration=6");
+const res = await fetch("https://<your-deployment>.vercel.app/search?q=bruh&min_duration=1&max_duration=6");
 const json = await res.json();
 console.log(json.data.map(s => s.title));
 ```
 
 ```bash
 # Merged search across all three providers
-curl "https://myinstants-five.vercel.app/search_all?q=bruh"
+curl "https://<your-deployment>.vercel.app/search_all?q=bruh"
 ```
 
 ## ❇️ Reference
@@ -213,80 +211,80 @@ All errors return JSON objects with an appropriate HTTP status code (e.g., 404, 
 ### Example 1: Trends & Search
 
 ```http
-GET https://myinstants-five.vercel.app/trending?q=id
-GET https://myinstants-five.vercel.app/search?q=laugh
+GET https://<your-deployment>.vercel.app/trending?q=id
+GET https://<your-deployment>.vercel.app/search?q=laugh
 ```
 
 ### Example 2: Sound Details
 
 ```http
-GET https://myinstants-five.vercel.app/detail?id=akh-26815
+GET https://<your-deployment>.vercel.app/detail?id=akh-26815
 ```
 
 ### Example 3: Recently Uploaded / Best of All Time
 
 ```http
-GET https://myinstants-five.vercel.app/recent
-GET https://myinstants-five.vercel.app/best?q=id
+GET https://<your-deployment>.vercel.app/recent
+GET https://<your-deployment>.vercel.app/best?q=id
 ```
 
 ### Example 4: A User's Uploads & Favorites
 
 ```http
-GET https://myinstants-five.vercel.app/uploaded?username=hellmouz
-GET https://myinstants-five.vercel.app/favorites?username=hellmouz
+GET https://<your-deployment>.vercel.app/uploaded?username=hellmouz
+GET https://<your-deployment>.vercel.app/favorites?username=hellmouz
 ```
 
 ### Example 5: Paginate Any List (e.g. Trending Syria, Page 4)
 
 ```http
-GET https://myinstants-five.vercel.app/trending?q=sy&page=4
-GET https://myinstants-five.vercel.app/search?q=laugh&page=2
-GET https://myinstants-five.vercel.app/recent?page=2
+GET https://<your-deployment>.vercel.app/trending?q=sy&page=4
+GET https://<your-deployment>.vercel.app/search?q=laugh&page=2
+GET https://<your-deployment>.vercel.app/recent?page=2
 ```
 
 ### Example 6: Only 2–6 Second Sounds
 
 ```http
-GET https://myinstants-five.vercel.app/search?q=laugh&min_duration=2&max_duration=6
-GET https://myinstants-five.vercel.app/trending?q=sy&page=4&min_duration=2&max_duration=6
+GET https://<your-deployment>.vercel.app/search?q=laugh&min_duration=2&max_duration=6
+GET https://<your-deployment>.vercel.app/trending?q=sy&page=4&min_duration=2&max_duration=6
 ```
 
 ### Example 7: Sounds by Category (Optional Region + Pagination)
 
 ```http
-GET https://myinstants-five.vercel.app/category?category=music
-GET https://myinstants-five.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
+GET https://<your-deployment>.vercel.app/category?category=music
+GET https://<your-deployment>.vercel.app/category?category=anime%20%26%20manga&q=sy&page=9
 ```
 
 ### Example 8: Other Providers (Merged or Per-Source)
 
 ```http
-GET https://myinstants-five.vercel.app/search_all?q=bruh&page=1
-GET https://myinstants-five.vercel.app/memesoundboard?q=bruh&page=2
-GET https://myinstants-five.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
+GET https://<your-deployment>.vercel.app/search_all?q=bruh&page=1
+GET https://<your-deployment>.vercel.app/memesoundboard?q=bruh&page=2
+GET https://<your-deployment>.vercel.app/101soundboards?q=bruh&page=2&min_duration=2&max_duration=6
 ```
 
 ### Example 9: Browse MemeSoundboard Without a Query
 
 ```http
-GET https://myinstants-five.vercel.app/memesoundboard
-GET https://myinstants-five.vercel.app/memesoundboard?sort=trending&page=2
-GET https://myinstants-five.vercel.app/memesoundboard?sort=all&page_size=50
+GET https://<your-deployment>.vercel.app/memesoundboard
+GET https://<your-deployment>.vercel.app/memesoundboard?sort=trending&page=2
+GET https://<your-deployment>.vercel.app/memesoundboard?sort=all&page_size=50
 ```
 
 ### Example 10: Browse 101Soundboards (tags -> boards -> sounds)
 
 ```http
-GET https://myinstants-five.vercel.app/101categories
-GET https://myinstants-five.vercel.app/101category?tag=games&page=1
-GET https://myinstants-five.vercel.app/101board?board=36000-halo-ringtones
+GET https://<your-deployment>.vercel.app/101categories
+GET https://<your-deployment>.vercel.app/101category?tag=games&page=1
+GET https://<your-deployment>.vercel.app/101board?board=36000-halo-ringtones
 ```
 
 ### Example 11: Audio Proxy (seekable, range-friendly)
 
 ```http
-GET https://myinstants-five.vercel.app/stream?url=https%3A%2F%2Fhoovers.101soundboards.com%2Fsounds%2Fhalo-ringtones%2Fmaster-chief.mp3
+GET https://<your-deployment>.vercel.app/stream?url=https%3A%2F%2Fhoovers.101soundboards.com%2Fsounds%2Fhalo-ringtones%2Fmaster-chief.mp3
 ```
 
 ## 🚀 Run Locally
