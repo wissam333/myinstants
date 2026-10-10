@@ -1,10 +1,4 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://www.myinstants.com/media/apple-touch-icon-114x114.png">
-    <img src="https://www.myinstants.com/media/apple-touch-icon-114x114.png" alt="UniSound" width="96">
-  </picture>
-</p>
-<h1 align="center">UniSound API</h1>
+<p align="center"><img src="assets/unisound-header.svg" alt="UniSound API — one REST API for every soundboard" width="1000"></p>
 
 <p align="center"><strong>One REST API for every soundboard.</strong><br>
 Search and browse <b>myinstants</b> · <b>memesoundboard</b> · <b>101soundboards</b> as one clean JSON feed.</p>
@@ -348,4 +342,4 @@ This project is licensed under the `MIT License`. See the [LICENSE](https://gith
 
 The sounds contained in this API are obtained from the original [MyInstants](https://www.myinstants.com), [MemeSoundboard](https://memesoundboard.io), and [101Soundboards](https://www.101soundboards.com) websites by web scraping. Developers using this API must follow the applicable regulations by mentioning this project or the official owners in their projects and are prohibited from abusing this API for personal benefits.
 
-[⬆️ Back to Top](#unisound-api)
+[⬆️ Back to Top](#readme)
