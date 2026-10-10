@@ -9,6 +9,7 @@ Search and browse <b>myinstants</b> · <b>memesoundboard</b> · <b>101soundboard
   <img src="https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white" alt="Deployed on Vercel">
   <img src="https://img.shields.io/badge/Serverless-Functions-0ea5e9?logo=serverless&logoColor=white" alt="Serverless Functions">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License MIT">
+  <img src="https://img.shields.io/badge/OpenAPI-3.0-green?logo=swagger" alt="OpenAPI 3.0">
   <img src="https://img.shields.io/github/actions/workflow/status/wissam333/unisound-api/php.yml?label=CI&logo=githubactions" alt="CI">
   <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome">
 </p>
@@ -76,6 +77,8 @@ curl "https://<your-deployment>.vercel.app/search_all?q=bruh"
 ## ❇️ Reference
 
 ### Endpoints
+
+_Machine-readable: the entire API is described in the bundled [openapi.json](openapi.json) (OpenAPI 3.0) spec — auto-generate clients, SDKs, or docs with any OpenAPI tool._
 
 | Request          | Response                 | Parameter  |
 | :--------------- | :----------------------- | :--------: |

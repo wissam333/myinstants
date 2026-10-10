@@ -1,0 +1,468 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "UniSound API",
+    "version": "1.0.0",
+    "description": "One REST API for every soundboard. Search and browse myinstants, memesoundboard and 101soundboards as one clean JSON feed — with pagination, duration filters, category browsing and a hotlink-safe audio proxy.\n\nAll list endpoints support `?page=N` (default 1) and optional duration filtering via `?with_duration=1&min_duration=2&max_duration=6`. Every sound item carries a `source` field telling you which provider it came from.",
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/wissam333/unisound-api/blob/main/LICENSE"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://<your-deployment>.vercel.app",
+      "description": "Deploy your own copy with the one-click Vercel button, or run locally with `php -S localhost:8000 router.php`"
+    }
+  ],
+  "tags": [
+    { "name": "myinstants", "description": "Sounds scraped from MyInstants.com" },
+    { "name": "memesoundboard", "description": "Sounds from MemeSoundboard.io via its DRF API" },
+    { "name": "101soundboards", "description": "Sounds and boards from 101Soundboards.com" },
+    { "name": "merged", "description": "Endpoints that combine multiple providers" }
+  ],
+  "paths": {
+    "/trending": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Trending sounds by region",
+        "parameters": [
+          { "$ref": "#/components/parameters/qRegion" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "List of trending sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Search sounds by name",
+        "parameters": [
+          { "$ref": "#/components/parameters/q" },
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/withDuration" },
+          { "$ref": "#/components/parameters/minDuration" },
+          { "$ref": "#/components/parameters/maxDuration" }
+        ],
+        "responses": {
+          "200": { "description": "Matching sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/detail": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Detailed info for one sound",
+        "parameters": [
+          { "$ref": "#/components/parameters/id" },
+          { "$ref": "#/components/parameters/withDuration" }
+        ],
+        "responses": {
+          "200": { "description": "Sound details", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundDetail" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/recent": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Recently uploaded sounds",
+        "parameters": [{ "$ref": "#/components/parameters/page" }],
+        "responses": {
+          "200": { "description": "Recently uploaded sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } }
+        }
+      }
+    },
+    "/best": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Best sounds of all time by region",
+        "parameters": [
+          { "$ref": "#/components/parameters/qRegion" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Top sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } }
+        }
+      }
+    },
+    "/uploaded": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Sounds uploaded by a user",
+        "parameters": [
+          { "$ref": "#/components/parameters/username" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "User's uploaded sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } }
+        }
+      }
+    },
+    "/favorites": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Sounds favorited by a user",
+        "parameters": [
+          { "$ref": "#/components/parameters/username" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "User's favorite sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } }
+        }
+      }
+    },
+    "/category": {
+      "get": {
+        "tags": ["myinstants"],
+        "summary": "Sounds by category (optional region)",
+        "parameters": [
+          { "$ref": "#/components/parameters/category" },
+          { "$ref": "#/components/parameters/qRegion" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Category listing (echoes category and region)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/memesoundboard": {
+      "get": {
+        "tags": ["memesoundboard"],
+        "summary": "Search or browse MemeSoundboard",
+        "description": "Pass `q` to search by name, or omit it to browse the catalog: `sort=new` (default, newest), `sort=trending`, `sort=all`.",
+        "parameters": [
+          { "$ref": "#/components/parameters/q" },
+          { "$ref": "#/components/parameters/sort" },
+          { "$ref": "#/components/parameters/page" },
+          { "$ref": "#/components/parameters/pageSize" }
+        ],
+        "responses": {
+          "200": { "description": "Matching or listed sounds", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/101soundboards": {
+      "get": {
+        "tags": ["101soundboards"],
+        "summary": "Search 101Soundboards by name",
+        "parameters": [
+          { "$ref": "#/components/parameters/q" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Matching sounds (include thumbnail, duration and mp3_original)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/101categories": {
+      "get": {
+        "tags": ["101soundboards"],
+        "summary": "List 101Soundboards categories (tags)",
+        "responses": {
+          "200": { "description": "Available tags", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CategoryList" } } } }
+        }
+      }
+    },
+    "/101category": {
+      "get": {
+        "tags": ["101soundboards"],
+        "summary": "Page through boards inside a 101Soundboards category",
+        "parameters": [
+          { "$ref": "#/components/parameters/tag" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Boards (kind=boards)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BoardList" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/101board": {
+      "get": {
+        "tags": ["101soundboards"],
+        "summary": "Sounds inside one 101Soundboards board",
+        "parameters": [
+          { "$ref": "#/components/parameters/board" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Sounds (include thumbnail, duration and mp3_original)", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SoundList" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/search_all": {
+      "get": {
+        "tags": ["merged"],
+        "summary": "Merged search across all providers (myinstants + memesoundboard + 101soundboards)",
+        "parameters": [
+          { "$ref": "#/components/parameters/q" },
+          { "$ref": "#/components/parameters/page" }
+        ],
+        "responses": {
+          "200": { "description": "Round-robin merged results with per-source status in `sources`", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MergedList" } } } },
+          "502": { "$ref": "#/components/responses/UpstreamError" }
+        }
+      }
+    },
+    "/stream": {
+      "get": {
+        "tags": ["merged"],
+        "summary": "Hotlink-safe audio proxy",
+        "description": "Replays the file with the correct Referer and open CORS headers. Passes through HTTP Range requests (206 Partial Content), so it works exactly like a direct file for `<audio>` playback, seeking and audio-splitters. Only whitelisted audio hosts (`*.101soundboards.com`, `*.soundboard.cloud`) are proxied.",
+        "parameters": [
+          { "$ref": "#/components/parameters/url" }
+        ],
+        "responses": {
+          "200": { "description": "Streamed audio (full body)", "content": { "audio/mpeg": {} } },
+          "206": { "description": "Partial content (when a Range header is sent)" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid parameters",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Resource not found or unknown endpoint",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "UpstreamError": {
+        "description": "Upstream provider refused the request (403/429 anti-bot). Retry later; cached responses still work.",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    },
+    "parameters": {
+      "q": {
+        "name": "q",
+        "in": "query",
+        "description": "Search query",
+        "required": true,
+        "schema": { "type": "string", "example": "laugh" }
+      },
+      "qRegion": {
+        "name": "q",
+        "in": "query",
+        "description": "Region code (e.g. `sy`, `us`). Optional; omit for global.",
+        "required": false,
+        "schema": { "type": "string", "example": "sy" }
+      },
+      "page": {
+        "name": "page",
+        "in": "query",
+        "description": "Page number (>= 1, default 1)",
+        "required": false,
+        "schema": { "type": "integer", "minimum": 1, "default": 1, "example": 2 }
+      },
+      "pageSize": {
+        "name": "page_size",
+        "in": "query",
+        "description": "memesoundboard page size (1-100, default 35)",
+        "required": false,
+        "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 35 }
+      },
+      "sort": {
+        "name": "sort",
+        "in": "query",
+        "description": "memesoundboard browse feed when `q` is omitted",
+        "required": false,
+        "schema": { "type": "string", "enum": ["new", "trending", "all"], "default": "new" }
+      },
+      "username": {
+        "name": "username",
+        "in": "query",
+        "description": "User's username",
+        "required": true,
+        "schema": { "type": "string", "example": "hellmouz" }
+      },
+      "id": {
+        "name": "id",
+        "in": "query",
+        "description": "Sound's unique ID",
+        "required": true,
+        "schema": { "type": "string", "example": "akh-26815" }
+      },
+      "category": {
+        "name": "category",
+        "in": "query",
+        "description": "myinstants category name (case-insensitive)",
+        "required": true,
+        "schema": { "type": "string", "example": "memes" }
+      },
+      "tag": {
+        "name": "tag",
+        "in": "query",
+        "description": "101Soundboards category tag (slug or name)",
+        "required": true,
+        "schema": { "type": "string", "example": "games" }
+      },
+      "board": {
+        "name": "board",
+        "in": "query",
+        "description": "101Soundboards board slug, `boards/{id-slug}`, or full URL",
+        "required": true,
+        "schema": { "type": "string", "example": "36000-halo-ringtones" }
+      },
+      "url": {
+        "name": "url",
+        "in": "query",
+        "description": "URL-encoded mp3 to replay through the proxy",
+        "required": true,
+        "schema": { "type": "string", "format": "uri", "example": "https://hoovers.101soundboards.com/sounds/halo-ringtones/master-chief.mp3" }
+      },
+      "withDuration": {
+        "name": "with_duration",
+        "in": "query",
+        "description": "1 to include MP3 duration (seconds) per sound",
+        "required": false,
+        "schema": { "type": "integer", "enum": [0, 1], "default": 0 }
+      },
+      "minDuration": {
+        "name": "min_duration",
+        "in": "query",
+        "description": "Only keep sounds >= N seconds",
+        "required": false,
+        "schema": { "type": "number", "example": 2 }
+      },
+      "maxDuration": {
+        "name": "max_duration",
+        "in": "query",
+        "description": "Only keep sounds <= N seconds",
+        "required": false,
+        "schema": { "type": "number", "example": 6 }
+      }
+    },
+    "schemas": {
+      "Sound": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "12108" },
+          "title": { "type": "string", "example": "Enisa folk" },
+          "url": { "type": "string", "description": "Page on the source provider", "example": "https://memesoundboard.io/search/new" },
+          "mp3": { "type": "string", "description": "Always-playable mp3 URL (may be a /stream proxy link for hotlink-protected sources)", "example": "https://play-v1.soundboard.cloud/media/sounds/20261009_041819_Enisa_folk.mp3" },
+          "mp3_original": { "type": "string", "description": "Direct CDN mp3 URL (may 403 from other origins). 101Soundboards only.", "example": "https://hoovers.101soundboards.com/sounds/..." },
+          "thumbnail": { "type": "string", "description": "Artwork thumbnail URL. 101Soundboards only." },
+          "duration": { "type": "number", "description": "Seconds; null unless duration probing was requested or the source exposes it for free", "nullable": true, "example": 1.42 },
+          "source": { "type": "string", "enum": ["myinstants", "memesoundboard", "101soundboards"], "example": "memesoundboard" }
+        }
+      },
+      "SoundList": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "200" },
+          "author": { "type": "string", "example": "wissam333" },
+          "page": { "type": "integer", "example": 1 },
+          "count": { "type": "integer", "example": 35 },
+          "total_pages": { "type": "integer", "nullable": true, "example": 13 },
+          "has_next": { "type": "boolean", "nullable": true },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Sound" } }
+        }
+      },
+      "MergedList": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "200" },
+          "author": { "type": "string", "example": "wissam333" },
+          "source": { "type": "string", "example": "mixed" },
+          "page": { "type": "integer" },
+          "count": { "type": "integer" },
+          "total_pages": { "type": "integer", "nullable": true },
+          "has_next": { "type": "boolean", "nullable": true },
+          "sources": { "type": "object", "description": "Per-source health/status", "additionalProperties": { "type": "object" } },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Sound" } }
+        }
+      },
+      "SoundDetail": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string" },
+          "author": { "type": "string" },
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "url": { "type": "string" },
+              "mp3": { "type": "string" },
+              "duration": { "type": "number", "nullable": true },
+              "description": { "type": "string" },
+              "tags": { "type": "array", "items": { "type": "string" } },
+              "favorites": { "type": "integer" },
+              "views": { "type": "integer" },
+              "uploader": { "type": "string" }
+            }
+          }
+        }
+      },
+      "CategoryList": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "200" },
+          "author": { "type": "string" },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tag": { "type": "string", "example": "games" },
+                "name": { "type": "string", "example": "Games" },
+                "url": { "type": "string", "example": "https://www.101soundboards.com/tags/games" }
+              }
+            }
+          }
+        }
+      },
+      "BoardList": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "200" },
+          "author": { "type": "string" },
+          "tag": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "type": "string", "example": "boards" },
+          "page": { "type": "integer" },
+          "count": { "type": "integer" },
+          "total_pages": { "type": "integer", "nullable": true },
+          "has_next": { "type": "boolean", "nullable": true },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "example": "36000-halo-ringtones" },
+                "title": { "type": "string" },
+                "url": { "type": "string" },
+                "thumbnail": { "type": "string" },
+                "kind": { "type": "string", "example": "board" }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "integer", "example": 400 },
+          "author": { "type": "string" },
+          "message": { "type": "string", "example": "Invalid 'sort' (new|trending|all), example: ?sort=trending" }
+        }
+      }
+    }
+  }
+}
